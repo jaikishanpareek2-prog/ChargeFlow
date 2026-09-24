@@ -1,0 +1,54 @@
+name: Build ChargeFlow APK
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ChargeAnimPro.zip'
+      - '.github/workflows/build-from-zip.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Extract project
+        run: |
+          rm -rf ChargeAnimPro
+          unzip -q ChargeAnimPro.zip
+          test -f ChargeAnimPro/settings.gradle
+          test -f ChargeAnimPro/app/src/main/AndroidManifest.xml
+
+      - name: Generate wrapper
+        working-directory: ChargeAnimPro
+        run: gradle wrapper --gradle-version 8.7
+
+      - name: Build debug APK
+        working-directory: ChargeAnimPro
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Verify APK
+        run: |
+          test -f ChargeAnimPro/app/build/outputs/apk/debug/app-debug.apk
+          unzip -l ChargeAnimPro/app/build/outputs/apk/debug/app-debug.apk | grep -q 'AndroidManifest.xml'
+          echo "APK created successfully."
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChargeFlow-debug-apk
+          path: ChargeAnimPro/app/build/outputs/apk/debug/app-debug.apk
