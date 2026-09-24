@@ -44,39 +44,43 @@ jobs:
           from pathlib import Path
           p = Path("app/src/main/AndroidManifest.xml")
           s = p.read_text()
-          permissions = [
+
+          required_permissions = [
               '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
               '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
               '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />'
           ]
-          permission = permissions[0]
-          for permission in permissions:
+          anchor = required_permissions[2]
+          for permission in required_permissions:
               if permission not in s:
+                  s = s.replace(anchor, anchor + "\\n" + permission)
+
+          if 'android:name=".service.ChargingService"' not in s:
               s = s.replace(
-                  '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />',
-                  '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\\n' + permission
+                  '</application>',
+                  '''    <service
+              android:name=".service.ChargingService"
+              android:enabled="true"
+              android:exported="false"
+              android:foregroundServiceType="specialUse" />
+          </application>'''
               )
-          # Ensure the service and the physical charger broadcasts are declared.
-          if 'com.chargeanim.pro.service.ChargingService' not in s:
-              s = s.replace('</application>', '''
-                  <service
-                      android:name=".service.ChargingService"
-                      android:enabled="true"
-                      android:exported="false"
-                      android:foregroundServiceType="specialUse" />
-              </application>''')
-          if 'com.chargeanim.pro.service.ChargingReceiver' not in s:
-              s = s.replace('</application>', '''
-                  <receiver
-                      android:name=".service.ChargingReceiver"
-                      android:enabled="true"
-                      android:exported="false">
-                      <intent-filter>
-                          <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
-                          <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
-                      </intent-filter>
-                  </receiver>
-              </application>''')
+
+          if 'android:name=".service.ChargingReceiver"' not in s:
+              s = s.replace(
+                  '</application>',
+                  '''    <receiver
+              android:name=".service.ChargingReceiver"
+              android:enabled="true"
+              android:exported="false">
+              <intent-filter>
+                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+              </intent-filter>
+          </receiver>
+          </application>'''
+              )
+
           p.write_text(s)
           PY
 
