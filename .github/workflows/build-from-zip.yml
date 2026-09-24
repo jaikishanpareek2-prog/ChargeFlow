@@ -70,7 +70,6 @@ jobs:
           s = s.replace('        chargingMetrics.stop()\n', '        com.chargeanim.pro.telemetry.ChargingMetricsProvider.release()\n')
           s = s.replace('import com.chargeanim.pro.telemetry.ChargingMetricsManager\n', '')
           service.write_text(s)
-
           dashboard = Path("app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt")
           d = dashboard.read_text()
           d = d.replace('import com.chargeanim.pro.telemetry.ChargingMetricsManager\n', 'import com.chargeanim.pro.telemetry.ChargingMetricsProvider\n')
@@ -105,24 +104,25 @@ jobs:
           if "kotlinCompilerExtensionVersion" not in s: s = s.replace(marker, marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }")
           dep = "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'"
           if dep not in s: s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
+          icons = "    implementation 'androidx.compose.material:material-icons-extended:1.7.8'"
+          if icons not in s: s = s.replace("dependencies {", "dependencies {\n" + icons, 1)
           p.write_text(s)
           gp = Path("gradle.properties")
           gs = gp.read_text() if gp.exists() else ""
           gs = re.sub(r"(?m)^org\.gradle\.jvmargs=.*$", "", gs)
           gp.write_text(gs.strip() + "\norg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m\n")
           PY
-      - name: Fix Compose state delegates and numeric literals
+      - name: Fix exact Kotlin source compile errors
         working-directory: ChargeAnimPro
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          root = Path("app/src/main/java")
           targets = [
-              root / "com/chargeanim/pro/media/MediaRenderer.kt",
-              root / "com/chargeanim/pro/ui/ChargingOverlayActivity.kt",
-              root / "com/chargeanim/pro/ui/ChargingOverlayScreen.kt",
-              root / "com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt",
-              root / "com/chargeanim/pro/ui/theme/EnergyRingVisual.kt",
+              Path("app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt"),
+              Path("app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayActivity.kt"),
+              Path("app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayScreen.kt"),
+              Path("app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt"),
+              Path("app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt"),
           ]
           for p in targets:
               if not p.exists():
@@ -130,12 +130,17 @@ jobs:
               s = p.read_text()
               if "import androidx.compose.runtime.getValue" not in s:
                   lines = s.splitlines()
-                  idx = 0
-                  while idx < len(lines) and (lines[idx].startswith("package ") or lines[idx].strip() == ""):
-                      idx += 1
+                  idx = next((i for i, line in enumerate(lines) if line.startswith("import ")), len(lines))
                   lines[idx:idx] = ["import androidx.compose.runtime.getValue", "import androidx.compose.runtime.setValue"]
-                  s = "\n".join(lines) + ("\n" if s.endswith("\n") else "")
+                  s = "\n".join(lines) + "\n"
               p.write_text(s)
+          p = targets[0]
+          s = p.read_text()
+          if "import com.airbnb.lottie.compose.getValue" not in s:
+              lines = s.splitlines()
+              idx = next((i for i, line in enumerate(lines) if line.startswith("import ")), len(lines))
+              lines.insert(idx, "import com.airbnb.lottie.compose.getValue")
+              p.write_text("\n".join(lines) + "\n")
           PY
       - name: Enable AndroidX
         working-directory: ChargeAnimPro
