@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -42,6 +43,18 @@ private enum class DashboardTab(val label: String) {
 
 @Composable
 fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        runCatching {
+            val intent = Intent(context, com.chargeanim.pro.service.ChargingService::class.java).apply {
+                action = com.chargeanim.pro.service.ChargingService.ACTION_MONITOR
+            }
+            ContextCompat.startForegroundService(context, intent)
+            DiagnosticLog.add(context, "Charging monitor start requested from visible app")
+        }.onFailure {
+            DiagnosticLog.add(context, "Charging monitor start FAILED: ${it::class.simpleName}: ${it.message}")
+        }
+    }
     var tab by remember { mutableStateOf(DashboardTab.THEMES) }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(20.dp, 20.dp, 20.dp, 8.dp)) {
