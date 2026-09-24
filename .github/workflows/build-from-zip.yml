@@ -53,6 +53,9 @@ jobs:
               s = s.replace('</application>', '''    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse" />\n          </application>''')
           if 'android:name=".service.ChargingReceiver"' not in s:
               s = s.replace('</application>', '''    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="true" android:directBootAware="true">\n              <intent-filter>\n                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\n                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />\n              </intent-filter>\n          </receiver>\n          </application>''')
+          # The source ZIP may contain the older receiver. Keep one authoritative power receiver.
+          import re
+          s = re.sub(r'\\s*<receiver[^>]*PowerConnectionReceiver[^>]*>.*?</receiver>', '', s, flags=re.S)
           Path("app/src/main/AndroidManifest.xml").write_text(s)
           PY
       - name: Centralize live charging metrics
@@ -151,6 +154,13 @@ jobs:
       - name: Generate wrapper
         working-directory: ChargeAnimPro
         run: gradle wrapper --gradle-version 8.7
+      - name: Inspect final charging integration
+        working-directory: ChargeAnimPro
+        run: |
+          echo "=== Charging integration files ==="
+          grep -R "ACTION_POWER_CONNECTED\\|ChargingService\\|ChargingReceiver" app/src/main/java app/src/main/AndroidManifest.xml || true
+          echo "=== Manifest receivers/services ==="
+          grep -n "<receiver\\|<service\\|SYSTEM_ALERT_WINDOW\\|FOREGROUND_SERVICE" app/src/main/AndroidManifest.xml || true
       - name: Build debug APK
         working-directory: ChargeAnimPro
         run: ./gradlew assembleDebug --stacktrace --no-daemon
