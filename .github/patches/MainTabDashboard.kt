@@ -40,7 +40,7 @@ import com.chargeanim.pro.ui.theme.ThemeVisual
 import kotlinx.coroutines.launch
 
 private enum class DashboardTab(val label: String) {
-    THEMES("Skins"), SETTINGS("Config"), PREVIEW("Monitor"), DIAGNOSTICS("Telemetry")
+    THEMES("Skins"), VIBES("Vibes"), SETTINGS("Config"), PREVIEW("Monitor"), DIAGNOSTICS("Telemetry")
 }
 
 @Composable
@@ -67,6 +67,7 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
         }
         when (tab) {
             DashboardTab.THEMES -> ThemesTab(prefs)
+            DashboardTab.VIBES -> VibesTab()
             DashboardTab.SETTINGS -> SettingsTab(prefs)
             DashboardTab.PREVIEW -> PreviewTab(prefs, onLaunchOverlay)
             DashboardTab.DIAGNOSTICS -> DiagnosticsTab()
