@@ -40,6 +40,9 @@ jobs:
           cp ../.github/patches/VibesThemeManager.kt app/src/main/java/com/chargeanim/pro/ui/theme/VibesThemeManager.kt
           cp ../.github/patches/VibesTab.kt app/src/main/java/com/chargeanim/pro/ui/main/VibesTab.kt
           cp ../.github/patches/FlowingWaveView.kt app/src/main/java/com/chargeanim/pro/ui/overlay/FlowingWaveView.kt
+          cp ../.github/patches/ChargeFlowSettings.kt app/src/main/java/com/chargeanim/pro/settings/ChargeFlowSettings.kt
+          cp ../.github/patches/ChargingHistoryStore.kt app/src/main/java/com/chargeanim/pro/history/ChargingHistoryStore.kt
+          cp ../.github/patches/ChargingAlertManager.kt app/src/main/java/com/chargeanim/pro/alert/ChargingAlertManager.kt
           cp ../.github/patches/ChargingOverlayScreen.kt app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayScreen.kt
           mkdir -p app/src/main/java/com/chargeanim/pro/diagnostics
           cp ../.github/patches/DiagnosticLog.kt app/src/main/java/com/chargeanim/pro/diagnostics/DiagnosticLog.kt
