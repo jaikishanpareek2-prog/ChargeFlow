@@ -33,6 +33,27 @@ jobs:
           test -f ChargeAnimPro/settings.gradle
           test -f ChargeAnimPro/app/src/main/AndroidManifest.xml
 
+      - name: Fix Compose compiler configuration
+        working-directory: ChargeAnimPro
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("build.gradle")
+          s = p.read_text()
+          s = s.replace("    id 'org.jetbrains.kotlin.plugin.compose' version '1.9.24' apply false\n", "")
+          p.write_text(s)
+
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          s = s.replace("    id 'org.jetbrains.kotlin.plugin.compose'\n", "")
+          marker = "    buildFeatures {\n        compose true\n    }"
+          replacement = marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }"
+          if "kotlinCompilerExtensionVersion" not in s:
+              s = s.replace(marker, replacement)
+          p.write_text(s)
+          PY
+          grep -n "compose\|kotlinCompilerExtensionVersion" build.gradle app/build.gradle
+
       - name: Generate wrapper
         working-directory: ChargeAnimPro
         run: gradle wrapper --gradle-version 8.7
