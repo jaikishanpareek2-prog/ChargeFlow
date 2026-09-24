@@ -5,9 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.PixelFormat
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -47,6 +50,7 @@ import kotlinx.coroutines.launch
 
 class ChargingService : Service() {
     companion object {
+        const val ACTION_MONITOR = "com.chargeanim.pro.action.MONITOR"
         const val ACTION_PLUGGED_IN = "com.chargeanim.pro.action.PLUGGED_IN"
         const val ACTION_UNPLUGGED = "com.chargeanim.pro.action.UNPLUGGED"
         private const val CHANNEL_ID = "charging_service_channel"
@@ -64,6 +68,14 @@ class ChargingService : Service() {
     private val statusState = mutableStateOf(BatteryStatusData())
     private val themeState = mutableStateOf(ThemeId.FUTURISTIC)
     private val mediaState = mutableStateOf(MediaSelection(null, MediaType.NONE))
+    private val powerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_POWER_CONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: CONNECTED"); showOverlayIfAllowed() }
+                Intent.ACTION_POWER_DISCONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: DISCONNECTED"); removeOverlay() }
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -73,38 +85,45 @@ class ChargingService : Service() {
         prefsRepo = PreferencesRepository(applicationContext)
         telemetry.start()
         DiagnosticLog.add(this, "Battery telemetry started")
+        registerReceiver(powerReceiver, IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+        })
+        DiagnosticLog.add(this, "Runtime power receiver registered")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         DiagnosticLog.add(this, "Service onStartCommand: action=${intent?.action}")
-        when (intent?.action) {
-            ACTION_PLUGGED_IN -> {
-                try {
-                    startForeground(NOTIFICATION_ID, buildNotification())
-                    DiagnosticLog.add(this, "startForeground() succeeded")
-                } catch (e: Exception) {
-                    Log.e(TAG, "startForeground failed", e)
-                    DiagnosticLog.add(this, "startForeground FAILED: ${e::class.simpleName}: ${e.message}")
-                    stopSelf(startId)
-                    return START_NOT_STICKY
-                }
-                val allowed = Settings.canDrawOverlays(this)
-                DiagnosticLog.add(this, "Overlay permission: $allowed")
-                if (allowed) showOverlay()
-                else {
-                    DiagnosticLog.add(this, "Overlay permission missing; animation cannot be shown")
-                    stopSelf(startId)
-                }
-            }
-            ACTION_UNPLUGGED -> {
-                DiagnosticLog.add(this, "Unplug action received; removing overlay")
-                removeOverlay()
-                stopSelf(startId)
-            }
+        try {
+            startForeground(NOTIFICATION_ID, buildNotification())
+            DiagnosticLog.add(this, "startForeground() succeeded")
+        } catch (e: Exception) {
+            Log.e(TAG, "startForeground failed", e)
+            DiagnosticLog.add(this, "startForeground FAILED: ${e::class.simpleName}: ${e.message}")
+            stopSelf(startId)
+            return START_NOT_STICKY
         }
-        return START_NOT_STICKY
+        when (intent?.action) {
+            ACTION_UNPLUGGED -> removeOverlay()
+            ACTION_PLUGGED_IN, ACTION_MONITOR, null -> checkCurrentChargingState()
+        }
+        return START_STICKY
+    }
+
+    private fun checkCurrentChargingState() {
+        val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        DiagnosticLog.add(this, "Current battery state: charging=$charging")
+        if (charging) showOverlayIfAllowed() else removeOverlay()
+    }
+
+    private fun showOverlayIfAllowed() {
+        val allowed = Settings.canDrawOverlays(this)
+        DiagnosticLog.add(this, "Overlay permission: $allowed")
+        if (allowed) showOverlay() else DiagnosticLog.add(this, "Overlay permission missing; animation cannot be shown")
     }
 
     private fun showOverlay() {
@@ -224,6 +243,7 @@ class ChargingService : Service() {
     override fun onDestroy() {
         DiagnosticLog.add(this, "Service onDestroy()")
         removeOverlay()
+        runCatching { unregisterReceiver(powerReceiver) }
         telemetry.stop()
         serviceScope.cancel()
         super.onDestroy()
