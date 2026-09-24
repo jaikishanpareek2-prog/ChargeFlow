@@ -30,6 +30,17 @@ jobs:
           unzip -q ChargeAnimPro.zip
           test -f ChargeAnimPro/settings.gradle
           test -f ChargeAnimPro/app/src/main/AndroidManifest.xml
+      - name: Apply Cyberpunk tab names
+        working-directory: ChargeAnimPro
+        run: |
+          STRINGS="app/src/main/res/values/strings.xml"
+          if [ -f "$STRINGS" ]; then
+            sed -i 's#<string name="app_tab_themes">[^<]*</string>#<string name="app_tab_themes">Skins</string>#' "$STRINGS"
+            sed -i 's#<string name="app_tab_settings">[^<]*</string>#<string name="app_tab_settings">Config</string>#' "$STRINGS"
+            sed -i 's#<string name="app_tab_preview">[^<]*</string>#<string name="app_tab_preview">Monitor</string>#' "$STRINGS"
+            sed -i 's#<string name="app_tab_diagnostics">[^<]*</string>#<string name="app_tab_diagnostics">Telemetry</string>#' "$STRINGS"
+          fi
+
       - name: Apply charging system overlay integration
         working-directory: ChargeAnimPro
         run: |
