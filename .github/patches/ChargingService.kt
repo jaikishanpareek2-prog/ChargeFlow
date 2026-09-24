@@ -74,8 +74,8 @@ class ChargingService : Service() {
     private val powerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: android.content.Context, intent: Intent) {
             when (intent.action) {
-                Intent.ACTION_POWER_CONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: CONNECTED"); showOverlayIfAllowed() }
-                Intent.ACTION_POWER_DISCONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: DISCONNECTED"); removeOverlay() }
+                Intent.ACTION_POWER_CONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: CONNECTED"); showOverlayIfAllowed(); overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) } }
+                Intent.ACTION_POWER_DISCONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: DISCONNECTED"); overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) }; removeOverlay() }
             }
         }
     }
