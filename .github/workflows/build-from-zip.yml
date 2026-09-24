@@ -46,6 +46,13 @@ jobs:
         run: |
           mkdir -p app/src/main/res/values
           cp ../.github/patches/cyber_colors.xml app/src/main/res/values/cyber_colors.xml
+      - name: Apply ChargeFlow adaptive icon
+        working-directory: ChargeAnimPro
+        run: |
+          mkdir -p app/src/main/res/mipmap-anydpi-v26 app/src/main/res/drawable app/src/main/res/values
+          cp ../.github/patches/ic_launcher.xml app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          cp ../.github/patches/ic_monogram_foreground.xml app/src/main/res/drawable/ic_monogram_foreground.xml
+          cp ../.github/patches/icon_background.xml app/src/main/res/values/icon_background.xml
       - name: Apply Cyberpunk tab names
         working-directory: ChargeAnimPro
         run: |
