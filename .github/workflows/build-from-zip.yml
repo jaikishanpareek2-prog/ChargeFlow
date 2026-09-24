@@ -38,17 +38,45 @@ jobs:
         working-directory: ChargeAnimPro
         run: |
           cp ../.github/patches/ChargingService.kt app/src/main/java/com/chargeanim/pro/service/ChargingService.kt
+          cp ../.github/patches/ChargingReceiver.kt app/src/main/java/com/chargeanim/pro/service/ChargingReceiver.kt
           cp ../.github/patches/MainTabDashboard.kt app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt
           python3 - <<'PY'
           from pathlib import Path
           p = Path("app/src/main/AndroidManifest.xml")
           s = p.read_text()
-          permission = '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />'
-          if permission not in s:
+          permissions = [
+              '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
+              '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+              '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />'
+          ]
+          permission = permissions[0]
+          for permission in permissions:
+              if permission not in s:
               s = s.replace(
                   '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />',
                   '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\\n' + permission
               )
+          # Ensure the service and the physical charger broadcasts are declared.
+          if 'com.chargeanim.pro.service.ChargingService' not in s:
+              s = s.replace('</application>', '''
+                  <service
+                      android:name=".service.ChargingService"
+                      android:enabled="true"
+                      android:exported="false"
+                      android:foregroundServiceType="specialUse" />
+              </application>''')
+          if 'com.chargeanim.pro.service.ChargingReceiver' not in s:
+              s = s.replace('</application>', '''
+                  <receiver
+                      android:name=".service.ChargingReceiver"
+                      android:enabled="true"
+                      android:exported="false">
+                      <intent-filter>
+                          <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+                          <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+                      </intent-filter>
+                  </receiver>
+              </application>''')
           p.write_text(s)
           PY
 
