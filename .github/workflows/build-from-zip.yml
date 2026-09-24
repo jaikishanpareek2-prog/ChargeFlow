@@ -30,6 +30,17 @@ jobs:
           unzip -q ChargeAnimPro.zip
           test -f ChargeAnimPro/settings.gradle
           test -f ChargeAnimPro/app/src/main/AndroidManifest.xml
+      - name: Apply Cyberpunk typography
+        working-directory: ChargeAnimPro
+        run: |
+          mkdir -p app/src/main/res/font
+          cp ../.github/patches/cyberpunk_font.xml app/src/main/res/font/cyberpunk_font.xml
+          cat > app/src/main/res/font/cyberpunk_sans.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <font-family xmlns:android="http://schemas.android.com/apk/res/android">
+              <font android:fontStyle="normal" android:fontWeight="400" android:font="@font/cyberpunk_sans_fallback" />
+          </font-family>
+          EOF
       - name: Apply Cyberpunk tab names
         working-directory: ChargeAnimPro
         run: |
