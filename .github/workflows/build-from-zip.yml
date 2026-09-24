@@ -54,6 +54,21 @@ jobs:
           PY
           grep -n "compose\|kotlinCompilerExtensionVersion" build.gradle app/build.gradle
 
+      - name: Enable AndroidX
+        working-directory: ChargeAnimPro
+        run: |
+          touch gradle.properties
+          if grep -q '^android.useAndroidX=' gradle.properties; then
+            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties
+          else
+            echo 'android.useAndroidX=true' >> gradle.properties
+          fi
+          if grep -q '^android.enableJetifier=' gradle.properties; then
+            sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' gradle.properties
+          else
+            echo 'android.enableJetifier=true' >> gradle.properties
+          fi
+
       - name: Generate wrapper
         working-directory: ChargeAnimPro
         run: gradle wrapper --gradle-version 8.7
