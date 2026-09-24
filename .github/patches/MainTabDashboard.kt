@@ -31,6 +31,8 @@ import com.chargeanim.pro.data.MediaType
 import com.chargeanim.pro.data.PreferencesRepository
 import com.chargeanim.pro.diagnostics.DiagnosticLog
 import com.chargeanim.pro.telemetry.BatteryStatusData
+import com.chargeanim.pro.telemetry.ChargingMetrics
+import com.chargeanim.pro.telemetry.ChargingMetricsManager
 import com.chargeanim.pro.ui.overlay.ChargingOverlayScreen
 import com.chargeanim.pro.ui.theme.ThemeCatalog
 import com.chargeanim.pro.ui.theme.ThemeId
@@ -38,7 +40,7 @@ import com.chargeanim.pro.ui.theme.ThemeVisual
 import kotlinx.coroutines.launch
 
 private enum class DashboardTab(val label: String) {
-    THEMES("Themes"), SETTINGS("Settings"), PREVIEW("Preview"), DIAGNOSTICS("Diagnostics")
+    THEMES("Skins"), SETTINGS("Config"), PREVIEW("Monitor"), DIAGNOSTICS("Telemetry")
 }
 
 @Composable
@@ -59,7 +61,6 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(20.dp, 20.dp, 20.dp, 8.dp)) {
             Text("ChargeFlow", style = MaterialTheme.typography.headlineMedium)
-            Text("No ads, no trackers, no root.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TabRow(selectedTabIndex = tab.ordinal) {
             DashboardTab.entries.forEach { t -> Tab(selected = tab == t, onClick = { tab = t }, text = { Text(t.label) }) }
@@ -151,24 +152,56 @@ private fun SettingsTab(prefs: PreferencesRepository) {
 @Composable
 private fun DiagnosticsTab() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var lines by remember { mutableStateOf(DiagnosticLog.readAll(context)) }
+    val metricsManager = remember { ChargingMetricsManager(context.applicationContext) }
+    val metrics by metricsManager.state.collectAsStateWithLifecycle()
+
+    DisposableEffect(lifecycleOwner) {
+        metricsManager.start()
+        onDispose { metricsManager.stop() }
+    }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
+        Text("POWER STATE", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        MetricsPanel(metrics)
+        Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Charging diagnostics", style = MaterialTheme.typography.titleMedium)
+            Text("Event log", style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { lines = DiagnosticLog.readAll(context) }) { Text("Refresh") }
                 OutlinedButton(onClick = { DiagnosticLog.clear(context); lines = emptyList() }) { Text("Clear") }
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("Plug in the charger, then tap Refresh. The newest event is at the top.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxSize()) {
             lazyItems(lines) { line ->
                 Text(line, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).padding(8.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun MetricsPanel(metrics: ChargingMetrics) {
+    val powerState = when {
+        metrics.isFull -> "FULL"
+        metrics.isCharging -> "CHARGING • ${metrics.chargingProfile.name}"
+        else -> "NOT CHARGING"
+    }
+    val timeToFull = metrics.timeToFullMinutes?.let { "${it} min" } ?: "—"
+    val rate = if (metrics.chargeRatePercentPerHour > 0.05) String.format(java.util.Locale.US, "%.1f %%/h", metrics.chargeRatePercentPerHour) else "—"
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().background(Color(0xFF0A0E1A), RoundedCornerShape(14.dp)).padding(14.dp)) {
+        Text(powerState, color = Color(0xFF55E6FF), style = MaterialTheme.typography.titleSmall)
+        Text("BATTERY %   ${metrics.batteryPercent}%")
+        Text(String.format(java.util.Locale.US, "VOLTAGE   %.2f V", metrics.voltageVolts))
+        Text(String.format(java.util.Locale.US, "CURRENT   %.2f A", metrics.currentAmps))
+        Text(String.format(java.util.Locale.US, "POWER     %.2f W", metrics.powerWatts))
+        Text(String.format(java.util.Locale.US, "TEMPERATURE   %.1f °C", metrics.temperatureCelsius))
+        Text("CHARGE RATE   $rate")
+        Text("TIME TO FULL   $timeToFull")
+        Text("SESSION   ${metrics.sessionSeconds / 60} min")
     }
 }
 
