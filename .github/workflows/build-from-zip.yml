@@ -100,8 +100,6 @@ jobs:
                   imports.append("import androidx.compose.runtime.getValue")
               if "collectAsStateWithLifecycle" in t and "import androidx.lifecycle.compose.collectAsStateWithLifecycle" not in t:
                   imports.append("import androidx.lifecycle.compose.collectAsStateWithLifecycle")
-              if "rememberLottieComposition" in t and "import com.airbnb.lottie.compose.getValue" not in t:
-                  imports.append("import com.airbnb.lottie.compose.getValue")
               if imports:
                   lines = t.splitlines()
                   pos = 0
