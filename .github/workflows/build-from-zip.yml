@@ -52,13 +52,14 @@ jobs:
           </vector>
           EOF
           sed -i 's#@mipmap/ic_launcher#@drawable/ic_launcher#g' app/src/main/AndroidManifest.xml
-          sed -i 's/Icons.Default.Bolt/Icons.Default.FlashOn/g' app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt
 
       - name: Fix Compose compiler and source compatibility
         working-directory: ChargeAnimPro
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           p = Path("build.gradle")
           s = p.read_text()
           s = s.replace("    id 'org.jetbrains.kotlin.plugin.compose' version '1.9.24' apply false\n", "")
@@ -71,18 +72,15 @@ jobs:
           replacement = marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }"
           if "kotlinCompilerExtensionVersion" not in s:
               s = s.replace(marker, replacement)
-          # Add the lifecycle Compose and extended Material icon dependencies if absent.
-          deps = [
-              "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'",
-              "    implementation 'androidx.compose.material:material-icons-extended:1.7.8'"
-          ]
-          anchor = "dependencies {"
-          for dep in deps:
-              if dep not in s:
-                  s = s.replace(anchor, anchor + "\n" + dep, 1)
+
+          # Keep the original Compose BOM dependency alignment from the project.
+          # Only add the lifecycle Compose artifact required by the existing source.
+          dep = "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'"
+          if dep not in s:
+              s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
           p.write_text(s)
 
-          # Compose State/Lottie delegate operators are extension imports.
+          # Add only the extension imports required by the original source.
           files = [
               "app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt",
               "app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt",
@@ -101,6 +99,8 @@ jobs:
                   imports.append("import androidx.compose.runtime.getValue")
               if "collectAsStateWithLifecycle" in t and "import androidx.lifecycle.compose.collectAsStateWithLifecycle" not in t:
                   imports.append("import androidx.lifecycle.compose.collectAsStateWithLifecycle")
+              if name.endswith("/MediaRenderer.kt") and "import androidx.compose.material.icons.filled.Bolt" not in t:
+                  imports.append("import androidx.compose.material.icons.filled.Bolt")
               if imports:
                   lines = t.splitlines()
                   pos = 0
@@ -109,8 +109,7 @@ jobs:
                   lines[pos:pos] = imports + [""]
                   f.write_text("\n".join(lines) + ("\n" if t.endswith("\n") else ""))
 
-          # kotlin.math.sin/cos return Double. Convert simple animation calls to Float
-          # so they compose with Canvas/Compose Float APIs.
+          # Keep the existing renderer math source compatible with Compose Float APIs.
           for name in [
               "app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt",
               "app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt"
@@ -119,16 +118,13 @@ jobs:
               if not f.exists():
                   continue
               t = f.read_text()
-              import re
-              t = re.sub(r"(?<![A-Za-z0-9_.])sin\\(([^()\\n]+)\\)", r"sin(\\1).toFloat()", t)
-              t = re.sub(r"(?<![A-Za-z0-9_.])cos\\(([^()\\n]+)\\)", r"cos(\\1).toFloat()", t)
+              t = re.sub(r"(?<![A-Za-z0-9_.])sin\(([^()\n]+)\)", r"sin(\1).toFloat()", t)
+              t = re.sub(r"(?<![A-Za-z0-9_.])cos\(([^()\n]+)\)", r"cos(\1).toFloat()", t)
               f.write_text(t)
 
-          # Give Gradle more heap; the previous run exhausted the 512 MiB daemon.
           gp = Path("gradle.properties")
           gs = gp.read_text() if gp.exists() else ""
-          import re
-          gs = re.sub(r"(?m)^org\\.gradle\\.jvmargs=.*$", "", gs)
+          gs = re.sub(r"(?m)^org\.gradle\.jvmargs=.*$", "", gs)
           gs += "\norg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m\n"
           gp.write_text(gs.strip() + "\n")
           PY
