@@ -52,7 +52,7 @@ jobs:
           ]
           for permission in required_permissions:
               if permission not in s:
-                  s = s.replace('<application', permission + "\\n    <application", 1)
+                  s = s.replace('<application', permission + "\n    <application", 1)
 
           if 'android:name=".service.ChargingService"' not in s:
               s = s.replace(
@@ -71,13 +71,19 @@ jobs:
                   '''    <receiver
               android:name=".service.ChargingReceiver"
               android:enabled="true"
-              android:exported="false">
+              android:exported="true"
+              android:directBootAware="true">
               <intent-filter>
                   <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
                   <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
               </intent-filter>
           </receiver>
           </application>'''
+              )
+          else:
+              s = s.replace(
+                  'android:name=".service.ChargingReceiver"\n        android:enabled="true"\n        android:exported="false"',
+                  'android:name=".service.ChargingReceiver"\n        android:enabled="true"\n        android:exported="true"\n        android:directBootAware="true"'
               )
 
           p.write_text(s)
@@ -123,14 +129,11 @@ jobs:
           if "kotlinCompilerExtensionVersion" not in s:
               s = s.replace(marker, replacement)
 
-          # Keep the original Compose BOM dependency alignment from the project.
-          # Only add the lifecycle Compose artifact required by the existing source.
           dep = "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'"
           if dep not in s:
               s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
           p.write_text(s)
 
-          # Add only the extension imports required by the original source.
           files = [
               "app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt",
               "app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt",
@@ -159,7 +162,6 @@ jobs:
                   lines[pos:pos] = imports + [""]
                   f.write_text("\n".join(lines) + ("\n" if t.endswith("\n") else ""))
 
-          # Keep the existing renderer math source compatible with Compose Float APIs.
           for name in [
               "app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt",
               "app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt"
