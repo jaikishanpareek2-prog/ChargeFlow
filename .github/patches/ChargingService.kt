@@ -32,6 +32,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.chargeanim.pro.alert.ChargingAlertManager
 import com.chargeanim.pro.data.MediaSelection
 import com.chargeanim.pro.data.MediaType
 import com.chargeanim.pro.data.PreferencesRepository
@@ -74,8 +75,8 @@ class ChargingService : Service() {
     private val powerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: android.content.Context, intent: Intent) {
             when (intent.action) {
-                Intent.ACTION_POWER_CONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: CONNECTED"); showOverlayIfAllowed(); overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) } }
-                Intent.ACTION_POWER_DISCONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: DISCONNECTED"); overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) }; removeOverlay() }
+                Intent.ACTION_POWER_CONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: CONNECTED"); ChargingAlertManager.play(context); showOverlayIfAllowed(); overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) } }
+                Intent.ACTION_POWER_DISCONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: DISCONNECTED"); ChargingAlertManager.play(context); overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) }; removeOverlay() }
             }
         }
     }
