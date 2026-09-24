@@ -38,6 +38,7 @@ import com.chargeanim.pro.data.PreferencesRepository
 import com.chargeanim.pro.diagnostics.DiagnosticLog
 import com.chargeanim.pro.telemetry.BatteryStatusData
 import com.chargeanim.pro.telemetry.BatteryTelemetryManager
+import com.chargeanim.pro.telemetry.ChargingMetricsManager
 import com.chargeanim.pro.ui.overlay.ChargingOverlayScreen
 import com.chargeanim.pro.ui.theme.ThemeId
 import kotlinx.coroutines.CoroutineScope
@@ -60,11 +61,13 @@ class ChargingService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var telemetry: BatteryTelemetryManager
+    private lateinit var chargingMetrics: ChargingMetricsManager
     private lateinit var prefsRepo: PreferencesRepository
     private lateinit var windowManager: WindowManager
     private var overlayView: ComposeView? = null
     private var overlayLifecycleOwner: OverlayLifecycleOwner? = null
     private var stateJob: Job? = null
+    private var metricsJob: Job? = null
     private val statusState = mutableStateOf(BatteryStatusData())
     private val themeState = mutableStateOf(ThemeId.FUTURISTIC)
     private val mediaState = mutableStateOf(MediaSelection(null, MediaType.NONE))
@@ -82,9 +85,23 @@ class ChargingService : Service() {
         DiagnosticLog.add(this, "Service onCreate()")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         telemetry = BatteryTelemetryManager(applicationContext)
+        chargingMetrics = ChargingMetricsManager(applicationContext)
         prefsRepo = PreferencesRepository(applicationContext)
         telemetry.start()
-        DiagnosticLog.add(this, "Battery telemetry started")
+        chargingMetrics.start()
+        DiagnosticLog.add(this, "Battery telemetry and shared charging metrics started")
+        metricsJob = serviceScope.launch {
+            chargingMetrics.state.collect { metrics ->
+                DiagnosticLog.add(
+                    this@ChargingService,
+                    "Metrics: ${metrics.batteryPercent}% ${String.format(java.util.Locale.US, "%.2fV", metrics.voltageVolts)} " +
+                        "${String.format(java.util.Locale.US, "%.2fA", metrics.currentAmps)} " +
+                        "${String.format(java.util.Locale.US, "%.2fW", metrics.powerWatts)} " +
+                        "${String.format(java.util.Locale.US, "%.1fC", metrics.temperatureCelsius)} " +
+                        "profile=${metrics.chargingProfile} ttf=${metrics.timeToFullMinutes ?: -1}m"
+                )
+            }
+        }
         registerReceiver(powerReceiver, IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
@@ -243,7 +260,10 @@ class ChargingService : Service() {
     override fun onDestroy() {
         DiagnosticLog.add(this, "Service onDestroy()")
         removeOverlay()
+        metricsJob?.cancel()
+        metricsJob = null
         runCatching { unregisterReceiver(powerReceiver) }
+        chargingMetrics.stop()
         telemetry.stop()
         serviceScope.cancel()
         super.onDestroy()
