@@ -15,25 +15,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-
       - name: Extract project
         run: |
           rm -rf ChargeAnimPro
           unzip -q ChargeAnimPro.zip
           test -f ChargeAnimPro/settings.gradle
           test -f ChargeAnimPro/app/src/main/AndroidManifest.xml
-
       - name: Apply charging system overlay integration
         working-directory: ChargeAnimPro
         run: |
@@ -48,36 +44,39 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s = Path("app/src/main/AndroidManifest.xml").read_text()
-          required_permissions = [
+          for permission in [
               '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
               '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
-              '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />'
-          ]
-          for permission in required_permissions:
-              if permission not in s:
-                  s = s.replace('<application', permission + "\n    <application", 1)
+              '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />']:
+              if permission not in s: s = s.replace('<application', permission + "\n    <application", 1)
           if 'android:name=".service.ChargingService"' not in s:
-              s = s.replace('</application>', '''    <service
-              android:name=".service.ChargingService"
-              android:enabled="true"
-              android:exported="false"
-              android:foregroundServiceType="specialUse" />
-          </application>''')
+              s = s.replace('</application>', '''    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse" />\n          </application>''')
           if 'android:name=".service.ChargingReceiver"' not in s:
-              s = s.replace('</application>', '''    <receiver
-              android:name=".service.ChargingReceiver"
-              android:enabled="true"
-              android:exported="true"
-              android:directBootAware="true">
-              <intent-filter>
-                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
-                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
-              </intent-filter>
-          </receiver>
-          </application>''')
+              s = s.replace('</application>', '''    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="true" android:directBootAware="true">\n              <intent-filter>\n                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\n                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />\n              </intent-filter>\n          </receiver>\n          </application>''')
           Path("app/src/main/AndroidManifest.xml").write_text(s)
           PY
+      - name: Centralize live charging metrics
+        working-directory: ChargeAnimPro
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          service = Path("app/src/main/java/com/chargeanim/pro/service/ChargingService.kt")
+          s = service.read_text()
+          s = s.replace('import kotlinx.coroutines.flow.combine', 'import kotlinx.coroutines.flow.StateFlow\nimport kotlinx.coroutines.flow.combine')
+          s = s.replace('private lateinit var chargingMetrics: ChargingMetricsManager', 'private lateinit var chargingMetricsState: StateFlow<com.chargeanim.pro.telemetry.ChargingMetrics>')
+          s = s.replace('chargingMetrics = ChargingMetricsManager(applicationContext)\n', 'chargingMetricsState = com.chargeanim.pro.telemetry.ChargingMetricsProvider.acquire(applicationContext)\n')
+          s = s.replace('        chargingMetrics.start()\n', '')
+          s = s.replace('chargingMetrics.state.collect', 'chargingMetricsState.collect')
+          s = s.replace('        chargingMetrics.stop()\n', '        com.chargeanim.pro.telemetry.ChargingMetricsProvider.release()\n')
+          s = s.replace('import com.chargeanim.pro.telemetry.ChargingMetricsManager\n', '')
+          service.write_text(s)
 
+          dashboard = Path("app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt")
+          d = dashboard.read_text()
+          d = d.replace('import com.chargeanim.pro.telemetry.ChargingMetricsManager\n', 'import com.chargeanim.pro.telemetry.ChargingMetricsProvider\n')
+          d = d.replace('    val metricsManager = remember { ChargingMetricsManager(context.applicationContext) }\n    val metrics by metricsManager.state.collectAsStateWithLifecycle()\n\n    DisposableEffect(lifecycleOwner) {\n        metricsManager.start()\n        onDispose { metricsManager.stop() }\n    }', '    val metricsState = remember { ChargingMetricsProvider.acquire(context.applicationContext) }\n    val metrics by metricsState.collectAsStateWithLifecycle()\n\n    DisposableEffect(lifecycleOwner) {\n        onDispose { ChargingMetricsProvider.release() }\n    }')
+          dashboard.write_text(d)
+          PY
       - name: Provide missing launcher icon
         working-directory: ChargeAnimPro
         run: |
@@ -92,7 +91,6 @@ jobs:
           </vector>
           EOF
           sed -i 's#@mipmap/ic_launcher#@drawable/ic_launcher#g' app/src/main/AndroidManifest.xml
-
       - name: Fix Compose compiler and source compatibility
         working-directory: ChargeAnimPro
         run: |
@@ -100,45 +98,36 @@ jobs:
           from pathlib import Path
           import re
           p = Path("build.gradle")
-          s = p.read_text().replace("    id 'org.jetbrains.kotlin.plugin.compose' version '1.9.24' apply false\n", "")
-          p.write_text(s)
+          p.write_text(p.read_text().replace("    id 'org.jetbrains.kotlin.plugin.compose' version '1.9.24' apply false\n", ""))
           p = Path("app/build.gradle")
           s = p.read_text().replace("    id 'org.jetbrains.kotlin.plugin.compose'\n", "")
           marker = "    buildFeatures {\n        compose true\n    }"
-          if "kotlinCompilerExtensionVersion" not in s:
-              s = s.replace(marker, marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }")
+          if "kotlinCompilerExtensionVersion" not in s: s = s.replace(marker, marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }")
           dep = "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'"
-          if dep not in s:
-              s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
+          if dep not in s: s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
           p.write_text(s)
           gp = Path("gradle.properties")
           gs = gp.read_text() if gp.exists() else ""
-          gs = re.sub(r"(?m)^org\\.gradle\\.jvmargs=.*$", "", gs)
-          gs += "\norg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m\n"
-          gp.write_text(gs.strip() + "\n")
+          gs = re.sub(r"(?m)^org\.gradle\.jvmargs=.*$", "", gs)
+          gp.write_text(gs.strip() + "\norg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m\n")
           PY
-
       - name: Enable AndroidX
         working-directory: ChargeAnimPro
         run: |
           touch gradle.properties
           if grep -q '^android.useAndroidX=' gradle.properties; then sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties; else echo 'android.useAndroidX=true' >> gradle.properties; fi
           if grep -q '^android.enableJetifier=' gradle.properties; then sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' gradle.properties; else echo 'android.enableJetifier=true' >> gradle.properties; fi
-
       - name: Generate wrapper
         working-directory: ChargeAnimPro
         run: gradle wrapper --gradle-version 8.7
-
       - name: Build debug APK
         working-directory: ChargeAnimPro
         run: ./gradlew assembleDebug --stacktrace --no-daemon
-
       - name: Verify APK
         run: |
           test -s ChargeAnimPro/app/build/outputs/apk/debug/app-debug.apk
           unzip -l ChargeAnimPro/app/build/outputs/apk/debug/app-debug.apk | grep -q 'AndroidManifest.xml'
           echo "APK created successfully."
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
