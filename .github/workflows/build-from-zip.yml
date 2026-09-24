@@ -44,11 +44,10 @@ jobs:
           cp ../.github/patches/MainTabDashboard.kt app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt
           mkdir -p app/src/main/java/com/chargeanim/pro/telemetry
           cp ../.github/patches/ChargingMetrics.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetrics.kt
+          cp ../.github/patches/ChargingMetricsProvider.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetricsProvider.kt
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("app/src/main/AndroidManifest.xml")
-          s = p.read_text()
-
+          s = Path("app/src/main/AndroidManifest.xml").read_text()
           required_permissions = [
               '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
               '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
@@ -57,22 +56,15 @@ jobs:
           for permission in required_permissions:
               if permission not in s:
                   s = s.replace('<application', permission + "\n    <application", 1)
-
           if 'android:name=".service.ChargingService"' not in s:
-              s = s.replace(
-                  '</application>',
-                  '''    <service
+              s = s.replace('</application>', '''    <service
               android:name=".service.ChargingService"
               android:enabled="true"
               android:exported="false"
               android:foregroundServiceType="specialUse" />
-          </application>'''
-              )
-
+          </application>''')
           if 'android:name=".service.ChargingReceiver"' not in s:
-              s = s.replace(
-                  '</application>',
-                  '''    <receiver
+              s = s.replace('</application>', '''    <receiver
               android:name=".service.ChargingReceiver"
               android:enabled="true"
               android:exported="true"
@@ -82,15 +74,8 @@ jobs:
                   <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
               </intent-filter>
           </receiver>
-          </application>'''
-              )
-          else:
-              s = s.replace(
-                  'android:name=".service.ChargingReceiver"\n        android:enabled="true"\n        android:exported="false"',
-                  'android:name=".service.ChargingReceiver"\n        android:enabled="true"\n        android:exported="true"\n        android:directBootAware="true"'
-              )
-
-          p.write_text(s)
+          </application>''')
+          Path("app/src/main/AndroidManifest.xml").write_text(s)
           PY
 
       - name: Provide missing launcher icon
@@ -99,14 +84,9 @@ jobs:
           mkdir -p app/src/main/res/drawable
           cat > app/src/main/res/drawable/ic_launcher.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="108dp"
-              android:height="108dp"
-              android:viewportWidth="108"
-              android:viewportHeight="108">
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
               <path android:fillColor="#08111F" android:pathData="M0,0h108v108h-108z" />
-              <path android:fillColor="#12304A" android:pathData="M54,10A44,44 0,1 0,54 98A44,44 0,1 0,54 10"
-                  android:strokeColor="#2DDCFF" android:strokeWidth="3" android:fillType="evenOdd" />
+              <path android:fillColor="#12304A" android:pathData="M54,10A44,44 0,1 0,54 98A44,44 0,1 0,54 10" android:strokeColor="#2DDCFF" android:strokeWidth="3" android:fillType="evenOdd" />
               <path android:fillColor="#55E6FF" android:pathData="M59,12L30,57h23l-6,39 32,-50h-24z" />
               <path android:fillColor="#FFFFFF" android:pathData="M58,20L39,55h18l-3,23 15,-30h-17z" />
           </vector>
@@ -119,68 +99,21 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           p = Path("build.gradle")
-          s = p.read_text()
-          s = s.replace("    id 'org.jetbrains.kotlin.plugin.compose' version '1.9.24' apply false\n", "")
+          s = p.read_text().replace("    id 'org.jetbrains.kotlin.plugin.compose' version '1.9.24' apply false\n", "")
           p.write_text(s)
-
           p = Path("app/build.gradle")
-          s = p.read_text()
-          s = s.replace("    id 'org.jetbrains.kotlin.plugin.compose'\n", "")
+          s = p.read_text().replace("    id 'org.jetbrains.kotlin.plugin.compose'\n", "")
           marker = "    buildFeatures {\n        compose true\n    }"
-          replacement = marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }"
           if "kotlinCompilerExtensionVersion" not in s:
-              s = s.replace(marker, replacement)
-
+              s = s.replace(marker, marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }")
           dep = "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'"
           if dep not in s:
               s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
           p.write_text(s)
-
-          files = [
-              "app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt",
-              "app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt",
-              "app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayActivity.kt",
-              "app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayScreen.kt",
-              "app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt",
-              "app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt"
-          ]
-          for name in files:
-              f = Path(name)
-              if not f.exists():
-                  continue
-              t = f.read_text()
-              imports = []
-              if " by " in t and "import androidx.compose.runtime.getValue" not in t:
-                  imports.append("import androidx.compose.runtime.getValue")
-              if "collectAsStateWithLifecycle" in t and "import androidx.lifecycle.compose.collectAsStateWithLifecycle" not in t:
-                  imports.append("import androidx.lifecycle.compose.collectAsStateWithLifecycle")
-              if name.endswith("/MediaRenderer.kt") and "import androidx.compose.material.icons.filled.Bolt" not in t:
-                  imports.append("import androidx.compose.material.icons.filled.Bolt")
-              if imports:
-                  lines = t.splitlines()
-                  pos = 0
-                  while pos < len(lines) and (lines[pos].startswith("package ") or lines[pos].strip() == ""):
-                      pos += 1
-                  lines[pos:pos] = imports + [""]
-                  f.write_text("\n".join(lines) + ("\n" if t.endswith("\n") else ""))
-
-          for name in [
-              "app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt",
-              "app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt"
-          ]:
-              f = Path(name)
-              if not f.exists():
-                  continue
-              t = f.read_text()
-              t = re.sub(r"(?<![A-Za-z0-9_.])sin\(([^()\n]+)\)", r"sin(\1).toFloat()", t)
-              t = re.sub(r"(?<![A-Za-z0-9_.])cos\(([^()\n]+)\)", r"cos(\1).toFloat()", t)
-              f.write_text(t)
-
           gp = Path("gradle.properties")
           gs = gp.read_text() if gp.exists() else ""
-          gs = re.sub(r"(?m)^org\.gradle\.jvmargs=.*$", "", gs)
+          gs = re.sub(r"(?m)^org\\.gradle\\.jvmargs=.*$", "", gs)
           gs += "\norg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m\n"
           gp.write_text(gs.strip() + "\n")
           PY
@@ -189,16 +122,8 @@ jobs:
         working-directory: ChargeAnimPro
         run: |
           touch gradle.properties
-          if grep -q '^android.useAndroidX=' gradle.properties; then
-            sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties
-          else
-            echo 'android.useAndroidX=true' >> gradle.properties
-          fi
-          if grep -q '^android.enableJetifier=' gradle.properties; then
-            sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' gradle.properties
-          else
-            echo 'android.enableJetifier=true' >> gradle.properties
-          fi
+          if grep -q '^android.useAndroidX=' gradle.properties; then sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties; else echo 'android.useAndroidX=true' >> gradle.properties; fi
+          if grep -q '^android.enableJetifier=' gradle.properties; then sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' gradle.properties; else echo 'android.enableJetifier=true' >> gradle.properties; fi
 
       - name: Generate wrapper
         working-directory: ChargeAnimPro
