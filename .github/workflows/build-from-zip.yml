@@ -113,6 +113,8 @@ jobs:
           if dep not in s: s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
           icons = "    implementation 'androidx.compose.material:material-icons-extended:1.7.8'"
           if icons not in s: s = s.replace("dependencies {", "dependencies {\n" + icons, 1)
+          palette = "    implementation 'androidx.palette:palette-ktx:1.0.0'"
+          if palette not in s: s = s.replace("dependencies {", "dependencies {\n" + palette, 1)
           p.write_text(s)
           gp = Path("gradle.properties")
           gs = gp.read_text() if gp.exists() else ""
