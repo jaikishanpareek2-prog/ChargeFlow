@@ -36,6 +36,7 @@ jobs:
           cp ../.github/patches/ChargingService.kt app/src/main/java/com/chargeanim/pro/service/ChargingService.kt
           cp ../.github/patches/ChargingReceiver.kt app/src/main/java/com/chargeanim/pro/service/ChargingReceiver.kt
           cp ../.github/patches/EnergyRingVisual.kt app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt
+          cp ../.github/patches/MediaColorAdapter.kt app/src/main/java/com/chargeanim/pro/media/MediaColorAdapter.kt
           cp ../.github/patches/VibesThemeManager.kt app/src/main/java/com/chargeanim/pro/ui/theme/VibesThemeManager.kt
           cp ../.github/patches/VibesTab.kt app/src/main/java/com/chargeanim/pro/ui/main/VibesTab.kt
           mkdir -p app/src/main/java/com/chargeanim/pro/diagnostics
