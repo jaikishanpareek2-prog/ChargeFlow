@@ -52,6 +52,7 @@ jobs:
           </vector>
           EOF
           sed -i 's#@mipmap/ic_launcher#@drawable/ic_launcher#g' app/src/main/AndroidManifest.xml
+          sed -i 's/Icons.Default.Bolt/Icons.Default.FlashOn/g' app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt
 
       - name: Fix Compose compiler and source compatibility
         working-directory: ChargeAnimPro
