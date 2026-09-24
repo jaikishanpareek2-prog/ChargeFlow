@@ -44,27 +44,16 @@ jobs:
               android:height="108dp"
               android:viewportWidth="108"
               android:viewportHeight="108">
-              <path
-                  android:fillColor="#08111F"
-                  android:pathData="M0,0h108v108h-108z" />
-              <path
-                  android:fillColor="#12304A"
-                  android:pathData="M54,10A44,44 0,1 0,54 98A44,44 0,1 0,54 10"
-                  android:strokeColor="#2DDCFF"
-                  android:strokeWidth="3"
-                  android:fillType="evenOdd" />
-              <path
-                  android:fillColor="#55E6FF"
-                  android:pathData="M59,12L30,57h23l-6,39 32,-50h-24z" />
-              <path
-                  android:fillColor="#FFFFFF"
-                  android:pathData="M58,20L39,55h18l-3,23 15,-30h-17z" />
+              <path android:fillColor="#08111F" android:pathData="M0,0h108v108h-108z" />
+              <path android:fillColor="#12304A" android:pathData="M54,10A44,44 0,1 0,54 98A44,44 0,1 0,54 10"
+                  android:strokeColor="#2DDCFF" android:strokeWidth="3" android:fillType="evenOdd" />
+              <path android:fillColor="#55E6FF" android:pathData="M59,12L30,57h23l-6,39 32,-50h-24z" />
+              <path android:fillColor="#FFFFFF" android:pathData="M58,20L39,55h18l-3,23 15,-30h-17z" />
           </vector>
           EOF
           sed -i 's#@mipmap/ic_launcher#@drawable/ic_launcher#g' app/src/main/AndroidManifest.xml
-          grep -n 'android:icon' app/src/main/AndroidManifest.xml
 
-      - name: Fix Compose compiler configuration
+      - name: Fix Compose compiler and source compatibility
         working-directory: ChargeAnimPro
         run: |
           python3 - <<'PY'
@@ -81,9 +70,69 @@ jobs:
           replacement = marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }"
           if "kotlinCompilerExtensionVersion" not in s:
               s = s.replace(marker, replacement)
+          # Add the lifecycle Compose and extended Material icon dependencies if absent.
+          deps = [
+              "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'",
+              "    implementation 'androidx.compose.material:material-icons-extended:1.7.8'"
+          ]
+          anchor = "dependencies {"
+          for dep in deps:
+              if dep not in s:
+                  s = s.replace(anchor, anchor + "\n" + dep, 1)
           p.write_text(s)
+
+          # Compose State/Lottie delegate operators are extension imports.
+          files = [
+              "app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt",
+              "app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt",
+              "app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayActivity.kt",
+              "app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayScreen.kt",
+              "app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt",
+              "app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt"
+          ]
+          for name in files:
+              f = Path(name)
+              if not f.exists():
+                  continue
+              t = f.read_text()
+              imports = []
+              if " by " in t and "import androidx.compose.runtime.getValue" not in t:
+                  imports.append("import androidx.compose.runtime.getValue")
+              if "collectAsStateWithLifecycle" in t and "import androidx.lifecycle.compose.collectAsStateWithLifecycle" not in t:
+                  imports.append("import androidx.lifecycle.compose.collectAsStateWithLifecycle")
+              if "rememberLottieComposition" in t and "import com.airbnb.lottie.compose.getValue" not in t:
+                  imports.append("import com.airbnb.lottie.compose.getValue")
+              if imports:
+                  lines = t.splitlines()
+                  pos = 0
+                  while pos < len(lines) and (lines[pos].startswith("package ") or lines[pos].strip() == ""):
+                      pos += 1
+                  lines[pos:pos] = imports + [""]
+                  f.write_text("\n".join(lines) + ("\n" if t.endswith("\n") else ""))
+
+          # kotlin.math.sin/cos return Double. Convert simple animation calls to Float
+          # so they compose with Canvas/Compose Float APIs.
+          for name in [
+              "app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt",
+              "app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt"
+          ]:
+              f = Path(name)
+              if not f.exists():
+                  continue
+              t = f.read_text()
+              import re
+              t = re.sub(r"(?<![A-Za-z0-9_.])sin\\(([^()\\n]+)\\)", r"sin(\\1).toFloat()", t)
+              t = re.sub(r"(?<![A-Za-z0-9_.])cos\\(([^()\\n]+)\\)", r"cos(\\1).toFloat()", t)
+              f.write_text(t)
+
+          # Give Gradle more heap; the previous run exhausted the 512 MiB daemon.
+          gp = Path("gradle.properties")
+          gs = gp.read_text() if gp.exists() else ""
+          import re
+          gs = re.sub(r"(?m)^org\\.gradle\\.jvmargs=.*$", "", gs)
+          gs += "\norg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m\n"
+          gp.write_text(gs.strip() + "\n")
           PY
-          grep -n "compose\|kotlinCompilerExtensionVersion" build.gradle app/build.gradle
 
       - name: Enable AndroidX
         working-directory: ChargeAnimPro
@@ -106,11 +155,11 @@ jobs:
 
       - name: Build debug APK
         working-directory: ChargeAnimPro
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Verify APK
         run: |
-          test -f ChargeAnimPro/app/build/outputs/apk/debug/app-debug.apk
+          test -s ChargeAnimPro/app/build/outputs/apk/debug/app-debug.apk
           unzip -l ChargeAnimPro/app/build/outputs/apk/debug/app-debug.apk | grep -q 'AndroidManifest.xml'
           echo "APK created successfully."
 
