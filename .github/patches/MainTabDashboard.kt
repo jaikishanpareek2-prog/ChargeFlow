@@ -27,6 +27,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.chargeanim.pro.data.AnimationMode
 import com.chargeanim.pro.data.MediaType
 import com.chargeanim.pro.data.PreferencesRepository
 import com.chargeanim.pro.diagnostics.DiagnosticLog
@@ -105,6 +106,7 @@ private fun SettingsTab(prefs: PreferencesRepository) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val enabled by prefs.enabled.collectAsStateWithLifecycle(initialValue = true)
+    val animationMode by prefs.animationMode.collectAsStateWithLifecycle(initialValue = AnimationMode.TEMPORARY)
     val amoled by prefs.amoledMode.collectAsStateWithLifecycle(initialValue = true)
     val autoHide by prefs.autoHide.collectAsStateWithLifecycle(initialValue = true)
     val soundEnabled by prefs.soundEnabled.collectAsStateWithLifecycle(initialValue = false)
@@ -131,6 +133,31 @@ private fun SettingsTab(prefs: PreferencesRepository) {
 
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         SettingSwitch("Show animation when charging", enabled) { scope.launch { prefs.setEnabled(it) } }
+        Spacer(Modifier.height(12.dp))
+        Text("Animation mode", style = MaterialTheme.typography.titleSmall)
+        Text(
+            if (animationMode == AnimationMode.TEMPORARY)
+                "Shows on charge and while the lock screen is active; hides after unlock."
+            else
+                "Stays visible continuously while charging and locked; hides after unlock.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = animationMode == AnimationMode.TEMPORARY,
+                onClick = { scope.launch { prefs.setAnimationMode(AnimationMode.TEMPORARY) } },
+                label = { Text("Temporary") }
+            )
+            FilterChip(
+                selected = animationMode == AnimationMode.ALWAYS_ON,
+                onClick = { scope.launch { prefs.setAnimationMode(AnimationMode.ALWAYS_ON) } },
+                label = { Text("Always On") }
+            )
+        }
         Spacer(Modifier.height(12.dp))
         Text("System overlay", style = MaterialTheme.typography.titleSmall)
         Text(if (overlayGranted.value) "Enabled: ChargeFlow can appear automatically when charging." else "Required for the charging animation to appear automatically over the system.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
