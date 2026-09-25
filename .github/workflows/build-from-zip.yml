@@ -99,6 +99,7 @@ jobs:
           cp ../.github/patches/ChargingService.kt app/src/main/java/com/chargeanim/pro/service/ChargingService.kt
           cp ../.github/patches/ChargingReceiver.kt app/src/main/java/com/chargeanim/pro/service/ChargingReceiver.kt
           cp ../.github/patches/EnergyRingVisual.kt app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt
+          cp ../.github/patches/MediaRenderer.kt app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt
           cp ../.github/patches/MediaColorAdapter.kt app/src/main/java/com/chargeanim/pro/media/MediaColorAdapter.kt
           cp ../.github/patches/VibesThemeManager.kt app/src/main/java/com/chargeanim/pro/ui/theme/VibesThemeManager.kt
           cp ../.github/patches/VibesTab.kt app/src/main/java/com/chargeanim/pro/ui/main/VibesTab.kt
@@ -147,21 +148,53 @@ jobs:
         run: |
           python3 <<'PY'
           from pathlib import Path
+          # ChargingService patch already wires ChargingMetricsProvider.
+          # Only rewrite if the old ChargingMetricsManager pattern is still present.
           service = Path("app/src/main/java/com/chargeanim/pro/service/ChargingService.kt")
           s = service.read_text()
-          s = s.replace('import kotlinx.coroutines.flow.combine', 'import kotlinx.coroutines.flow.StateFlow\nimport kotlinx.coroutines.flow.combine')
-          s = s.replace('private lateinit var chargingMetrics: ChargingMetricsManager', 'private lateinit var chargingMetricsState: StateFlow<com.chargeanim.pro.telemetry.ChargingMetrics>')
-          s = s.replace('chargingMetrics = ChargingMetricsManager(applicationContext)\n', 'chargingMetricsState = com.chargeanim.pro.telemetry.ChargingMetricsProvider.acquire(applicationContext)\n')
-          s = s.replace('        chargingMetrics.start()\n', '')
-          s = s.replace('chargingMetrics.state.collect', 'chargingMetricsState.collect')
-          s = s.replace('        chargingMetrics.stop()\n', '        com.chargeanim.pro.telemetry.ChargingMetricsProvider.release()\n')
-          s = s.replace('import com.chargeanim.pro.telemetry.ChargingMetricsManager\n', '')
-          service.write_text(s)
+          if "ChargingMetricsManager" in s:
+              if "import kotlinx.coroutines.flow.StateFlow" not in s:
+                  s = s.replace(
+                      "import kotlinx.coroutines.flow.combine",
+                      "import kotlinx.coroutines.flow.StateFlow\nimport kotlinx.coroutines.flow.combine",
+                  )
+              s = s.replace(
+                  "private lateinit var chargingMetrics: ChargingMetricsManager",
+                  "private lateinit var chargingMetricsState: StateFlow<com.chargeanim.pro.telemetry.ChargingMetrics>",
+              )
+              s = s.replace(
+                  "chargingMetrics = ChargingMetricsManager(applicationContext)\n",
+                  "chargingMetricsState = com.chargeanim.pro.telemetry.ChargingMetricsProvider.acquire(applicationContext)\n",
+              )
+              s = s.replace("        chargingMetrics.start()\n", "")
+              s = s.replace("chargingMetrics.state.collect", "chargingMetricsState.collect")
+              s = s.replace(
+                  "        chargingMetrics.stop()\n",
+                  "        com.chargeanim.pro.telemetry.ChargingMetricsProvider.release()\n",
+              )
+              s = s.replace("import com.chargeanim.pro.telemetry.ChargingMetricsManager\n", "")
+              service.write_text(s)
           dashboard = Path("app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt")
           d = dashboard.read_text()
-          d = d.replace('import com.chargeanim.pro.telemetry.ChargingMetricsManager\n', 'import com.chargeanim.pro.telemetry.ChargingMetricsProvider\n')
-          d = d.replace('    val metricsManager = remember { ChargingMetricsManager(context.applicationContext) }\n    val metrics by metricsManager.state.collectAsStateWithLifecycle()\n\n    DisposableEffect(lifecycleOwner) {\n        metricsManager.start()\n        onDispose { metricsManager.stop() }\n    }', '    val metricsState = remember { ChargingMetricsProvider.acquire(context.applicationContext) }\n    val metrics by metricsState.collectAsStateWithLifecycle()\n\n    DisposableEffect(lifecycleOwner) {\n        onDispose { ChargingMetricsProvider.release() }\n    }')
-          dashboard.write_text(d)
+          if "ChargingMetricsManager" in d:
+              d = d.replace(
+                  "import com.chargeanim.pro.telemetry.ChargingMetricsManager\n",
+                  "import com.chargeanim.pro.telemetry.ChargingMetricsProvider\n",
+              )
+              d = d.replace(
+                  "    val metricsManager = remember { ChargingMetricsManager(context.applicationContext) }\n"
+                  "    val metrics by metricsManager.state.collectAsStateWithLifecycle()\n\n"
+                  "    DisposableEffect(lifecycleOwner) {\n"
+                  "        metricsManager.start()\n"
+                  "        onDispose { metricsManager.stop() }\n"
+                  "    }",
+                  "    val metricsState = remember { ChargingMetricsProvider.acquire(context.applicationContext) }\n"
+                  "    val metrics by metricsState.collectAsStateWithLifecycle()\n\n"
+                  "    DisposableEffect(lifecycleOwner) {\n"
+                  "        onDispose { ChargingMetricsProvider.release() }\n"
+                  "    }",
+              )
+              dashboard.write_text(d)
           PY
       - name: Provide missing launcher icon
         working-directory: ChargeAnimPro
@@ -214,25 +247,20 @@ jobs:
               Path("app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayScreen.kt"),
               Path("app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt"),
               Path("app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt"),
+              Path("app/src/main/java/com/chargeanim/pro/ui/main/VibesTab.kt"),
           ]
           for p in targets:
               if not p.exists():
                   continue
               s = p.read_text()
+              # Remove bad Lottie getValue import if present
+              s = s.replace("import com.airbnb.lottie.compose.getValue\n", "")
               if "import androidx.compose.runtime.getValue" not in s:
                   lines = s.splitlines()
                   idx = next((i for i, line in enumerate(lines) if line.startswith("import ")), len(lines))
                   lines[idx:idx] = ["import androidx.compose.runtime.getValue", "import androidx.compose.runtime.setValue"]
                   s = "\n".join(lines) + "\n"
               p.write_text(s)
-          p = targets[0]
-          if p.exists():
-              s = p.read_text()
-              if "import com.airbnb.lottie.compose.getValue" not in s:
-                  lines = s.splitlines()
-                  idx = next((i for i, line in enumerate(lines) if line.startswith("import ")), len(lines))
-                  lines.insert(idx, "import com.airbnb.lottie.compose.getValue")
-                  p.write_text("\n".join(lines) + "\n")
           PY
       - name: Enable AndroidX
         working-directory: ChargeAnimPro
