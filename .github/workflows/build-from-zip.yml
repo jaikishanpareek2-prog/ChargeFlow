@@ -7,6 +7,7 @@ on:
       - 'ChargeAnimPro.zip'
       - '.github/workflows/build-from-zip.yml'
       - '.github/patches/**'
+      - '.github/scripts/**'
   workflow_dispatch:
 
 jobs:
@@ -32,43 +33,7 @@ jobs:
           test -f ChargeAnimPro/app/src/main/AndroidManifest.xml
       - name: Merge ChargeFlow Vibes theme catalog
         working-directory: ChargeAnimPro
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowThemes.kt")
-          s = p.read_text()
-          old_enum = '''    NATURE("Nature"), MINIMAL("Minimal"), ANIME("Anime"), ABSTRACT("Abstract")
-}'''
-          new_enum = '''    NATURE("Nature"), MINIMAL("Minimal"), ANIME("Anime"), ABSTRACT("Abstract"),
-    MIDNIGHT_GARDEN("Midnight Garden"), CELESTIAL_SPARKLE("Celestial Sparkle"),
-    ENCHANTED_FOREST("Enchanted Forest"), OCEAN_ABYSS("Ocean Abyss")
-}'''
-          if old_enum in s and "MIDNIGHT_GARDEN" not in s:
-              s = s.replace(old_enum, new_enum, 1)
-          old_catalog = '''    ThemeId.ABSTRACT to ThemeStyle(Color(0xFFFF6FD8), Color(0xFF6FE0FF), RendererKind.RIBBON_WAVE)
-)'''
-          new_catalog = '''    ThemeId.ABSTRACT to ThemeStyle(Color(0xFFFF6FD8), Color(0xFF6FE0FF), RendererKind.RIBBON_WAVE),
-
-    // Soft Vibes presets reuse the existing lightweight renderers with dedicated palettes.
-    ThemeId.MIDNIGHT_GARDEN to ThemeStyle(
-        Color(0xFFB86BFF), Color(0xFFFF77C8), RendererKind.PARTICLE_FIELD, ParticleDrift.DRIFT
-    ),
-    ThemeId.CELESTIAL_SPARKLE to ThemeStyle(
-        Color(0xFF9B8CFF), Color(0xFF65D9FF), RendererKind.PARTICLE_FIELD, ParticleDrift.RADIAL
-    ),
-    ThemeId.ENCHANTED_FOREST to ThemeStyle(
-        Color(0xFF64E89A), Color(0xFFB8FF70), RendererKind.PARTICLE_FIELD, ParticleDrift.DRIFT
-    ),
-    ThemeId.OCEAN_ABYSS to ThemeStyle(
-        Color(0xFF28C8FF), Color(0xFF63FFE0), RendererKind.LIQUID_RIPPLE
-    )
-)'''
-          if old_catalog in s and "ThemeId.MIDNIGHT_GARDEN to" not in s:
-              s = s.replace(old_catalog, new_catalog, 1)
-          s = s.replace("import androidx.compose.runtime.setValue\\n", "").replace("import androidx.compose.runtime.getValue\\n", "")
-          p.write_text(s)
-          PY
-
+        run: python3 ../.github/scripts/patch_vibes_themes.py
       - name: Apply Cyberpunk typography
         working-directory: ChargeAnimPro
         run: |
@@ -100,17 +65,13 @@ jobs:
             if grep -q '<string name="app_name">' "$STRINGS"; then
               sed -i 's#<string name="app_name">[^<]*</string>#<string name="app_name">ChargeFlow</string>#' "$STRINGS"
             else
-              sed -i '/<resources>/a\\    <string name="app_name">ChargeFlow</string>' "$STRINGS"
+              sed -i '/<resources>/a\    <string name="app_name">ChargeFlow</string>' "$STRINGS"
             fi
           else
             mkdir -p app/src/main/res/values
-            cat > "$STRINGS" <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources><string name="app_name">ChargeFlow</string></resources>
-          EOF
+            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources><string name="app_name">ChargeFlow</string></resources>' > "$STRINGS"
           fi
           sed -i 's#android:label="[^"]*"#android:label="@string/app_name"#' app/src/main/AndroidManifest.xml
-
       - name: Apply Cyberpunk tab names
         working-directory: ChargeAnimPro
         run: |
@@ -121,48 +82,9 @@ jobs:
             sed -i 's#<string name="app_tab_preview">[^<]*</string>#<string name="app_tab_preview">Monitor</string>#' "$STRINGS"
             sed -i 's#<string name="app_tab_diagnostics">[^<]*</string>#<string name="app_tab_diagnostics">Telemetry</string>#' "$STRINGS"
           fi
-
       - name: Apply charging lifecycle preferences
         working-directory: ChargeAnimPro
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path("app/src/main/java/com/chargeanim/pro/data/PreferencesRepository.kt")
-          s = p.read_text()
-          if "enum class AnimationMode" not in s:
-              s = s.replace(
-                  "enum class MediaType",
-                  'enum class AnimationMode { TEMPORARY, ALWAYS_ON }\n\nenum class MediaType',
-                  1
-              )
-          if 'booleanPreferencesKey("enabled")' in s and 'stringPreferencesKey("animation_mode")' not in s:
-              s = s.replace(
-                  'val ENABLED = booleanPreferencesKey("enabled")',
-                  'val ENABLED = booleanPreferencesKey("enabled")\n        val ANIMATION_MODE = stringPreferencesKey("animation_mode")',
-                  1
-              )
-          if "val animationMode:" not in s:
-              marker = "    val enabled: Flow<Boolean>"
-              pos = s.find(marker)
-              if pos >= 0:
-                  line_end = s.find("\n", pos)
-                  s = s[:line_end+1] + '    val animationMode: Flow<AnimationMode> = context.dataStore.data.map { prefs ->\n        runCatching { AnimationMode.valueOf(prefs[Keys.ANIMATION_MODE] ?: AnimationMode.TEMPORARY.name) }.getOrDefault(AnimationMode.TEMPORARY)\n    }\n' + s[line_end+1:]
-          if "suspend fun setAnimationMode" not in s:
-              marker = "    suspend fun setEnabled"
-              pos = s.find(marker)
-              if pos >= 0:
-                  brace = s.find("\n    }", pos)
-                  insert_at = brace + len("\n    }")
-                  method = '''
-    
-    suspend fun setAnimationMode(mode: AnimationMode) {
-        context.dataStore.edit { it[Keys.ANIMATION_MODE] = mode.name }
-    }'''
-                  s = s[:insert_at] + method + s[insert_at:]
-          p.write_text(s)
-          PY
-
+        run: python3 ../.github/scripts/patch_animation_mode.py
       - name: Apply charging system overlay integration
         working-directory: ChargeAnimPro
         run: |
@@ -183,29 +105,41 @@ jobs:
           mkdir -p app/src/main/java/com/chargeanim/pro/telemetry
           cp ../.github/patches/ChargingMetrics.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetrics.kt
           cp ../.github/patches/ChargingMetricsProvider.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetricsProvider.kt
-          python3 - <<'PY'
+          python3 ../.github/scripts/patch_charging_service.py
+          python3 <<'PY'
           from pathlib import Path
           s = Path("app/src/main/AndroidManifest.xml").read_text()
           for permission in [
               '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
               '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
-              '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />']:
-              if permission not in s: s = s.replace('<application', permission + "\n    <application", 1)
+              '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />',
+              '    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />',
+              '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />']:
+              if permission not in s:
+                  s = s.replace('<application', permission + "\n    <application", 1)
           if 'android:name=".service.ChargingService"' not in s:
-              s = s.replace('</application>', '''    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse" />\n          </application>''')
+              s = s.replace('</application>', '    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse" />\n    </application>')
           if 'android:name=".service.ChargingReceiver"' not in s:
-              s = s.replace('</application>', '''    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="false">\n              <intent-filter>\n                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\n                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
-                  <action android:name="android.intent.action.BOOT_COMPLETED" />
-                  <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n              </intent-filter>\n          </receiver>\n          </application>''')
-          # The source ZIP may contain the older receiver. Keep one authoritative power receiver.
+              receiver = (
+                  '    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="false">\n'
+                  '              <intent-filter>\n'
+                  '                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\n'
+                  '                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />\n'
+                  '                  <action android:name="android.intent.action.BOOT_COMPLETED" />\n'
+                  '                  <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />\n'
+                  '                  <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n'
+                  '              </intent-filter>\n'
+                  '          </receiver>\n'
+              )
+              s = s.replace('</application>', receiver + '    </application>')
           import re
-          s = re.sub(r'\\s*<receiver[^>]*PowerConnectionReceiver[^>]*>.*?</receiver>', '', s, flags=re.S)
+          s = re.sub(r'\s*<receiver[^>]*PowerConnectionReceiver[^>]*>.*?</receiver>', '', s, flags=re.S)
           Path("app/src/main/AndroidManifest.xml").write_text(s)
           PY
       - name: Centralize live charging metrics
         working-directory: ChargeAnimPro
         run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
           service = Path("app/src/main/java/com/chargeanim/pro/service/ChargingService.kt")
           s = service.read_text()
@@ -240,7 +174,7 @@ jobs:
       - name: Fix Compose compiler and source compatibility
         working-directory: ChargeAnimPro
         run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
           import re
           p = Path("build.gradle")
@@ -248,13 +182,15 @@ jobs:
           p = Path("app/build.gradle")
           s = p.read_text().replace("    id 'org.jetbrains.kotlin.plugin.compose'\n", "")
           marker = "    buildFeatures {\n        compose true\n    }"
-          if "kotlinCompilerExtensionVersion" not in s: s = s.replace(marker, marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }")
-          dep = "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'"
-          if dep not in s: s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
-          icons = "    implementation 'androidx.compose.material:material-icons-extended:1.7.8'"
-          if icons not in s: s = s.replace("dependencies {", "dependencies {\n" + icons, 1)
-          palette = "    implementation 'androidx.palette:palette-ktx:1.0.0'"
-          if palette not in s: s = s.replace("dependencies {", "dependencies {\n" + palette, 1)
+          if "kotlinCompilerExtensionVersion" not in s:
+              s = s.replace(marker, marker + "\n\n    composeOptions {\n        kotlinCompilerExtensionVersion '1.5.14'\n    }")
+          for dep in [
+              "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'",
+              "    implementation 'androidx.compose.material:material-icons-extended:1.7.8'",
+              "    implementation 'androidx.palette:palette-ktx:1.0.0'",
+          ]:
+              if dep not in s:
+                  s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
           p.write_text(s)
           gp = Path("gradle.properties")
           gs = gp.read_text() if gp.exists() else ""
@@ -264,7 +200,7 @@ jobs:
       - name: Fix exact Kotlin source compile errors
         working-directory: ChargeAnimPro
         run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
           targets = [
               Path("app/src/main/java/com/chargeanim/pro/media/MediaRenderer.kt"),
@@ -284,12 +220,13 @@ jobs:
                   s = "\n".join(lines) + "\n"
               p.write_text(s)
           p = targets[0]
-          s = p.read_text()
-          if "import com.airbnb.lottie.compose.getValue" not in s:
-              lines = s.splitlines()
-              idx = next((i for i, line in enumerate(lines) if line.startswith("import ")), len(lines))
-              lines.insert(idx, "import com.airbnb.lottie.compose.getValue")
-              p.write_text("\n".join(lines) + "\n")
+          if p.exists():
+              s = p.read_text()
+              if "import com.airbnb.lottie.compose.getValue" not in s:
+                  lines = s.splitlines()
+                  idx = next((i for i, line in enumerate(lines) if line.startswith("import ")), len(lines))
+                  lines.insert(idx, "import com.airbnb.lottie.compose.getValue")
+                  p.write_text("\n".join(lines) + "\n")
           PY
       - name: Enable AndroidX
         working-directory: ChargeAnimPro
@@ -300,13 +237,6 @@ jobs:
       - name: Generate wrapper
         working-directory: ChargeAnimPro
         run: gradle wrapper --gradle-version 8.7
-      - name: Inspect final charging integration
-        working-directory: ChargeAnimPro
-        run: |
-          echo "=== Charging integration files ==="
-          grep -R "ACTION_POWER_CONNECTED\\|ChargingService\\|ChargingReceiver" app/src/main/java app/src/main/AndroidManifest.xml || true
-          echo "=== Manifest receivers/services ==="
-          grep -n "<receiver\\|<service\\|SYSTEM_ALERT_WINDOW\\|FOREGROUND_SERVICE" app/src/main/AndroidManifest.xml || true
       - name: Build debug APK
         working-directory: ChargeAnimPro
         run: ./gradlew assembleDebug --stacktrace --no-daemon
