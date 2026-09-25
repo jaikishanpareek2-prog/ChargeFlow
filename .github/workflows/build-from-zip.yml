@@ -37,14 +37,11 @@ jobs:
       - name: Apply Cyberpunk typography
         working-directory: ChargeAnimPro
         run: |
+          # No TTF is shipped. Do not install font-family XML that references
+          # missing @font resources (that caused AAPT on run #84).
           mkdir -p app/src/main/res/font
-          cp ../.github/patches/cyberpunk_font.xml app/src/main/res/font/cyberpunk_font.xml
-          cat > app/src/main/res/font/cyberpunk_sans.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <font-family xmlns:android="http://schemas.android.com/apk/res/android">
-              <font android:fontStyle="normal" android:fontWeight="400" android:font="@font/cyberpunk_sans_fallback" />
-          </font-family>
-          EOF
+          rm -f app/src/main/res/font/cyberpunk_sans.xml app/src/main/res/font/cyberpunk_font.xml
+          echo "Skipping custom font XML; themes use system default typeface"
       - name: Apply Cyberpunk color palette
         working-directory: ChargeAnimPro
         run: |
