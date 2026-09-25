@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- Placeholder font-family. No TTF is shipped in the APK; this keeps
+     R.font.cyberpunk_font resolvable without AAPT missing-resource errors.
+     Compose themes should use FontFamily.Default / system sans instead of
+     a custom face until a real .ttf is added under res/font/. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <font
         android:fontStyle="normal"
         android:fontWeight="400"
-        android:font="@font/cyberpunk_sans" />
+        app:fontProviderAuthority="com.google.android.gms.fonts"
+        app:fontProviderPackage="com.google.android.gms"
+        app:fontProviderQuery="name=Roboto&amp;weight=400"
+        app:fontProviderCerts="@array/com_google_android_gms_fonts_certs" />
 </font-family>
