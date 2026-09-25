@@ -88,6 +88,17 @@ jobs:
       - name: Apply charging system overlay integration
         working-directory: ChargeAnimPro
         run: |
+          mkdir -p \
+            app/src/main/java/com/chargeanim/pro/service \
+            app/src/main/java/com/chargeanim/pro/ui/theme \
+            app/src/main/java/com/chargeanim/pro/media \
+            app/src/main/java/com/chargeanim/pro/ui/main \
+            app/src/main/java/com/chargeanim/pro/ui/overlay \
+            app/src/main/java/com/chargeanim/pro/settings \
+            app/src/main/java/com/chargeanim/pro/history \
+            app/src/main/java/com/chargeanim/pro/alert \
+            app/src/main/java/com/chargeanim/pro/diagnostics \
+            app/src/main/java/com/chargeanim/pro/telemetry
           cp ../.github/patches/ChargingService.kt app/src/main/java/com/chargeanim/pro/service/ChargingService.kt
           cp ../.github/patches/ChargingReceiver.kt app/src/main/java/com/chargeanim/pro/service/ChargingReceiver.kt
           cp ../.github/patches/EnergyRingVisual.kt app/src/main/java/com/chargeanim/pro/ui/theme/EnergyRingVisual.kt
@@ -99,10 +110,8 @@ jobs:
           cp ../.github/patches/ChargingHistoryStore.kt app/src/main/java/com/chargeanim/pro/history/ChargingHistoryStore.kt
           cp ../.github/patches/ChargingAlertManager.kt app/src/main/java/com/chargeanim/pro/alert/ChargingAlertManager.kt
           cp ../.github/patches/ChargingOverlayScreen.kt app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayScreen.kt
-          mkdir -p app/src/main/java/com/chargeanim/pro/diagnostics
           cp ../.github/patches/DiagnosticLog.kt app/src/main/java/com/chargeanim/pro/diagnostics/DiagnosticLog.kt
           cp ../.github/patches/MainTabDashboard.kt app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt
-          mkdir -p app/src/main/java/com/chargeanim/pro/telemetry
           cp ../.github/patches/ChargingMetrics.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetrics.kt
           cp ../.github/patches/ChargingMetricsProvider.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetricsProvider.kt
           python3 ../.github/scripts/patch_charging_service.py
