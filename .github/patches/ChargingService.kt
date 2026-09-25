@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Intent
+import android.app.KeyguardManager
 import android.content.IntentFilter
 import android.graphics.PixelFormat
 import android.net.Uri
@@ -33,6 +34,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.chargeanim.pro.alert.ChargingAlertManager
+import com.chargeanim.pro.data.AnimationMode
 import com.chargeanim.pro.data.MediaSelection
 import com.chargeanim.pro.data.MediaType
 import com.chargeanim.pro.data.PreferencesRepository
@@ -47,6 +49,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -62,21 +65,44 @@ class ChargingService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var telemetry: BatteryTelemetryManager
-    private lateinit var chargingMetrics: ChargingMetricsManager
+    private lateinit var chargingMetricsState: StateFlow<com.chargeanim.pro.telemetry.ChargingMetrics>
     private lateinit var prefsRepo: PreferencesRepository
+    private lateinit var keyguardManager: KeyguardManager
     private lateinit var windowManager: WindowManager
     private var overlayView: ComposeView? = null
     private var overlayLifecycleOwner: OverlayLifecycleOwner? = null
     private var stateJob: Job? = null
     private var metricsJob: Job? = null
+    private var prefsJob: Job? = null
+    private var animationMode = AnimationMode.TEMPORARY
+    private var enabled = true
+    private var userPresentSincePlugged = false
+    private var lastCharging = false
     private val statusState = mutableStateOf(BatteryStatusData())
     private val themeState = mutableStateOf(ThemeId.FUTURISTIC)
     private val mediaState = mutableStateOf(MediaSelection(null, MediaType.NONE))
     private val powerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: android.content.Context, intent: Intent) {
             when (intent.action) {
-                Intent.ACTION_POWER_CONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: CONNECTED"); ChargingAlertManager.play(context); showOverlayIfAllowed(); overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) } }
-                Intent.ACTION_POWER_DISCONNECTED -> { DiagnosticLog.add(context, "Runtime power receiver: DISCONNECTED"); ChargingAlertManager.play(context); overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) }; removeOverlay() }
+                Intent.ACTION_POWER_CONNECTED -> {
+                    DiagnosticLog.add(context, "Runtime event: POWER_CONNECTED")
+                    userPresentSincePlugged = false
+                    ChargingAlertManager.play(context)
+                    evaluateAnimationState("POWER_CONNECTED", true)
+                }
+                Intent.ACTION_POWER_DISCONNECTED -> {
+                    DiagnosticLog.add(context, "Runtime event: POWER_DISCONNECTED")
+                    userPresentSincePlugged = false
+                    removeOverlay("POWER_DISCONNECTED")
+                    evaluateAnimationState("POWER_DISCONNECTED", false)
+                }
+                Intent.ACTION_BATTERY_CHANGED -> evaluateAnimationState("BATTERY_CHANGED", false)
+                Intent.ACTION_SCREEN_ON -> evaluateAnimationState("SCREEN_ON", false)
+                Intent.ACTION_SCREEN_OFF -> evaluateAnimationState("SCREEN_OFF", false)
+                Intent.ACTION_USER_PRESENT -> {
+                    userPresentSincePlugged = true
+                    evaluateAnimationState("USER_PRESENT", false)
+                }
             }
         }
     }
@@ -86,13 +112,12 @@ class ChargingService : Service() {
         DiagnosticLog.add(this, "Service onCreate()")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         telemetry = BatteryTelemetryManager(applicationContext)
-        chargingMetrics = ChargingMetricsManager(applicationContext)
+        chargingMetricsState = com.chargeanim.pro.telemetry.ChargingMetricsProvider.acquire(applicationContext)
         prefsRepo = PreferencesRepository(applicationContext)
         telemetry.start()
-        chargingMetrics.start()
         DiagnosticLog.add(this, "Battery telemetry and shared charging metrics started")
         metricsJob = serviceScope.launch {
-            chargingMetrics.state.collect { metrics ->
+            chargingMetricsState.collect { metrics ->
                 DiagnosticLog.add(
                     this@ChargingService,
                     "Metrics: ${metrics.batteryPercent}% ${String.format(java.util.Locale.US, "%.2fV", metrics.voltageVolts)} " +
@@ -103,11 +128,35 @@ class ChargingService : Service() {
                 )
             }
         }
+        keyguardManager = getSystemService(KeyguardManager::class.java)
         registerReceiver(powerReceiver, IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
-        })
-        DiagnosticLog.add(this, "Runtime power receiver registered")
+            addAction(Intent.ACTION_BATTERY_CHANGED)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }, if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU)
+            android.content.Context.RECEIVER_EXPORTED else 0)
+        DiagnosticLog.add(this, "Runtime system receiver registered")
+
+        prefsJob = serviceScope.launch {
+            combine(
+                prefsRepo.enabled,
+                prefsRepo.animationMode,
+                prefsRepo.theme,
+                prefsRepo.normalMedia,
+                prefsRepo.fastMedia
+            ) { enabledValue, mode, theme, normalMedia, fastMedia ->
+                PrefState(enabledValue, mode, theme, normalMedia, fastMedia)
+            }.collect { state ->
+                enabled = state.enabled
+                animationMode = state.mode
+                themeState.value = state.theme
+                mediaState.value = if (statusState.value.isFastCharging) state.fastMedia else state.normalMedia
+                evaluateAnimationState("PREFERENCES", false)
+            }
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -124,24 +173,45 @@ class ChargingService : Service() {
             return START_NOT_STICKY
         }
         when (intent?.action) {
-            ACTION_UNPLUGGED -> removeOverlay()
-            ACTION_PLUGGED_IN, ACTION_MONITOR, null -> checkCurrentChargingState()
+            ACTION_UNPLUGGED -> removeOverlay("ACTION_UNPLUGGED")
+            ACTION_PLUGGED_IN, ACTION_MONITOR, null -> evaluateAnimationState("SERVICE_START", false)
         }
         return START_STICKY
     }
 
-    private fun checkCurrentChargingState() {
+    private fun evaluateAnimationState(reason: String, haptic: Boolean) {
         val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
-        DiagnosticLog.add(this, "Current battery state: charging=$charging")
-        if (charging) showOverlayIfAllowed() else removeOverlay()
+        val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+        val charging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL) && (plugged != 0 || status == BatteryManager.BATTERY_STATUS_FULL)
+        val locked = keyguardManager.isKeyguardLocked
+
+        if (charging != lastCharging) {
+            lastCharging = charging
+            if (charging) userPresentSincePlugged = false
+            else userPresentSincePlugged = false
+        }
+
+        val shouldShow = enabled && charging && when (animationMode) {
+            AnimationMode.ALWAYS_ON -> locked
+            AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
+        }
+
+        DiagnosticLog.add(this, "Evaluate: reason=$reason charging=$charging locked=$locked enabled=$enabled mode=$animationMode userPresent=$userPresentSincePlugged show=$shouldShow")
+
+        if (shouldShow) showOverlayIfAllowed(haptic) else removeOverlay(reason)
     }
 
-    private fun showOverlayIfAllowed() {
+    private fun showOverlayIfAllowed(haptic: Boolean = false) {
         val allowed = Settings.canDrawOverlays(this)
         DiagnosticLog.add(this, "Overlay permission: $allowed")
-        if (allowed) showOverlay() else DiagnosticLog.add(this, "Overlay permission missing; animation cannot be shown")
+        if (allowed) {
+            showOverlay()
+            if (haptic) overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) }
+        } else {
+            DiagnosticLog.add(this, "Overlay permission missing; watcher remains alive")
+        }
     }
 
     private fun showOverlay() {
@@ -206,7 +276,7 @@ class ChargingService : Service() {
             Log.e(TAG, "Overlay addView failed: SecurityException", e)
             DiagnosticLog.add(this, "Overlay addView FAILED: SecurityException: ${e.message}")
             destroyOverlayOwner()
-            stopSelf()
+            // Keep the permanent watcher alive; the next relevant event will retry.
         } catch (e: WindowManager.BadTokenException) {
             Log.e(TAG, "Overlay addView failed: BadTokenException", e)
             DiagnosticLog.add(this, "Overlay addView FAILED: BadTokenException: ${e.message}")
@@ -233,13 +303,13 @@ class ChargingService : Service() {
         }
     }
 
-    private fun removeOverlay() {
+    private fun removeOverlay(reason: String = "UNSPECIFIED") {
         stateJob?.cancel()
         stateJob = null
         overlayView?.let {
             try {
-                windowManager.removeView(it)
-                DiagnosticLog.add(this, "Overlay window removed")
+                windowManager.removeViewImmediate(it)
+                DiagnosticLog.add(this, "Overlay window removed: $reason")
             } catch (_: IllegalArgumentException) {
                 DiagnosticLog.add(this, "Overlay window was already removed")
             }
@@ -263,8 +333,10 @@ class ChargingService : Service() {
         removeOverlay()
         metricsJob?.cancel()
         metricsJob = null
+        prefsJob?.cancel()
+        prefsJob = null
         runCatching { unregisterReceiver(powerReceiver) }
-        chargingMetrics.stop()
+        com.chargeanim.pro.telemetry.ChargingMetricsProvider.release()
         telemetry.stop()
         serviceScope.cancel()
         super.onDestroy()
@@ -284,12 +356,13 @@ class ChargingService : Service() {
             .setContentText("Charging animation is running")
             .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
             .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setOngoing(false)
+            .setOngoing(true)
             .setContentIntent(pendingIntent)
             .build()
     }
 
     private data class OverlayState(val status: BatteryStatusData, val theme: ThemeId, val media: MediaSelection)
+    private data class PrefState(val enabled: Boolean, val mode: AnimationMode, val theme: ThemeId, val normalMedia: MediaSelection, val fastMedia: MediaSelection)
 }
 
 private class OverlayLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
