@@ -12,32 +12,30 @@ class ChargingReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            Intent.ACTION_POWER_CONNECTED -> {
-                DiagnosticLog.add(context, "Broadcast received: ACTION_POWER_CONNECTED")
-                val serviceIntent = Intent(context, ChargingService::class.java).apply {
-                    action = ChargingService.ACTION_PLUGGED_IN
-                }
-                try {
-                    ContextCompat.startForegroundService(context, serviceIntent)
-                    DiagnosticLog.add(context, "startForegroundService() call returned normally")
-                } catch (e: RuntimeException) {
-                    Log.e(TAG, "Unable to start charging service", e)
-                    DiagnosticLog.add(context, "startForegroundService FAILED: ${e::class.simpleName}: ${e.message}")
-                }
-            }
-            Intent.ACTION_POWER_DISCONNECTED -> {
-                DiagnosticLog.add(context, "Broadcast received: ACTION_POWER_DISCONNECTED")
-                val serviceIntent = Intent(context, ChargingService::class.java).apply {
-                    action = ChargingService.ACTION_UNPLUGGED
-                }
-                try {
-                    context.startService(serviceIntent)
-                    DiagnosticLog.add(context, "stopService call returned normally")
-                } catch (e: RuntimeException) {
-                    Log.e(TAG, "Unable to stop charging service", e)
-                    DiagnosticLog.add(context, "stopService call FAILED: ${e::class.simpleName}: ${e.message}")
-                }
-            }
+            Intent.ACTION_POWER_CONNECTED ->
+                startWatcher(context, ChargingService.ACTION_PLUGGED_IN)
+            Intent.ACTION_POWER_DISCONNECTED ->
+                startWatcher(context, ChargingService.ACTION_UNPLUGGED)
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_LOCKED_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_USER_PRESENT ->
+                startWatcher(context, ChargingService.ACTION_MONITOR)
+        }
+    }
+
+    private fun startWatcher(context: Context, action: String) {
+        DiagnosticLog.add(context, "Broadcast received: $action")
+        val serviceIntent = Intent(context, ChargingService::class.java).setAction(action)
+        try {
+            ContextCompat.startForegroundService(context, serviceIntent)
+            DiagnosticLog.add(context, "startForegroundService() returned normally")
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "Unable to start charging service", e)
+            DiagnosticLog.add(
+                context,
+                "startForegroundService FAILED: ${e::class.simpleName}: ${e.message}"
+            )
         }
     }
 }

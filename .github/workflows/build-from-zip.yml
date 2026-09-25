@@ -122,6 +122,47 @@ jobs:
             sed -i 's#<string name="app_tab_diagnostics">[^<]*</string>#<string name="app_tab_diagnostics">Telemetry</string>#' "$STRINGS"
           fi
 
+      - name: Apply charging lifecycle preferences
+        working-directory: ChargeAnimPro
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("app/src/main/java/com/chargeanim/pro/data/PreferencesRepository.kt")
+          s = p.read_text()
+          if "enum class AnimationMode" not in s:
+              s = s.replace(
+                  "enum class MediaType",
+                  'enum class AnimationMode { TEMPORARY, ALWAYS_ON }\n\nenum class MediaType',
+                  1
+              )
+          if 'booleanPreferencesKey("enabled")' in s and 'stringPreferencesKey("animation_mode")' not in s:
+              s = s.replace(
+                  'val ENABLED = booleanPreferencesKey("enabled")',
+                  'val ENABLED = booleanPreferencesKey("enabled")\n        val ANIMATION_MODE = stringPreferencesKey("animation_mode")',
+                  1
+              )
+          if "val animationMode:" not in s:
+              marker = "    val enabled: Flow<Boolean>"
+              pos = s.find(marker)
+              if pos >= 0:
+                  line_end = s.find("\n", pos)
+                  s = s[:line_end+1] + '    val animationMode: Flow<AnimationMode> = context.dataStore.data.map { prefs ->\n        runCatching { AnimationMode.valueOf(prefs[Keys.ANIMATION_MODE] ?: AnimationMode.TEMPORARY.name) }.getOrDefault(AnimationMode.TEMPORARY)\n    }\n' + s[line_end+1:]
+          if "suspend fun setAnimationMode" not in s:
+              marker = "    suspend fun setEnabled"
+              pos = s.find(marker)
+              if pos >= 0:
+                  brace = s.find("\n    }", pos)
+                  insert_at = brace + len("\n    }")
+                  method = '''
+    
+    suspend fun setAnimationMode(mode: AnimationMode) {
+        context.dataStore.edit { it[Keys.ANIMATION_MODE] = mode.name }
+    }'''
+                  s = s[:insert_at] + method + s[insert_at:]
+          p.write_text(s)
+          PY
+
       - name: Apply charging system overlay integration
         working-directory: ChargeAnimPro
         run: |
@@ -153,7 +194,9 @@ jobs:
           if 'android:name=".service.ChargingService"' not in s:
               s = s.replace('</application>', '''    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse" />\n          </application>''')
           if 'android:name=".service.ChargingReceiver"' not in s:
-              s = s.replace('</application>', '''    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="true" android:directBootAware="true">\n              <intent-filter>\n                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\n                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />\n              </intent-filter>\n          </receiver>\n          </application>''')
+              s = s.replace('</application>', '''    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="false">\n              <intent-filter>\n                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\n                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+                  <action android:name="android.intent.action.BOOT_COMPLETED" />
+                  <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n              </intent-filter>\n          </receiver>\n          </application>''')
           # The source ZIP may contain the older receiver. Keep one authoritative power receiver.
           import re
           s = re.sub(r'\\s*<receiver[^>]*PowerConnectionReceiver[^>]*>.*?</receiver>', '', s, flags=re.S)
