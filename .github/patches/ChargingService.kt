@@ -41,7 +41,6 @@ import com.chargeanim.pro.data.PreferencesRepository
 import com.chargeanim.pro.diagnostics.DiagnosticLog
 import com.chargeanim.pro.telemetry.BatteryStatusData
 import com.chargeanim.pro.telemetry.BatteryTelemetryManager
-import com.chargeanim.pro.telemetry.ChargingMetricsManager
 import com.chargeanim.pro.ui.overlay.ChargingOverlayScreen
 import com.chargeanim.pro.ui.theme.ThemeId
 import kotlinx.coroutines.CoroutineScope
@@ -189,8 +188,7 @@ class ChargingService : Service() {
 
         if (charging != lastCharging) {
             lastCharging = charging
-            if (charging) userPresentSincePlugged = false
-            else userPresentSincePlugged = false
+            userPresentSincePlugged = false
         }
 
         val shouldShow = enabled && charging && when (animationMode) {
@@ -208,7 +206,11 @@ class ChargingService : Service() {
         DiagnosticLog.add(this, "Overlay permission: $allowed")
         if (allowed) {
             showOverlay()
-            if (haptic) overlayView?.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(it) }
+            if (haptic) {
+                overlayView?.let { view ->
+                    view.post { com.chargeanim.pro.ui.overlay.ChargerHaptics.trigger(view) }
+                }
+            }
         } else {
             DiagnosticLog.add(this, "Overlay permission missing; watcher remains alive")
         }
@@ -281,12 +283,12 @@ class ChargingService : Service() {
             Log.e(TAG, "Overlay addView failed: BadTokenException", e)
             DiagnosticLog.add(this, "Overlay addView FAILED: BadTokenException: ${e.message}")
             destroyOverlayOwner()
-            stopSelf()
+            // Keep watcher alive; do not stopSelf on overlay failure.
         } catch (e: Exception) {
             Log.e(TAG, "Overlay addView failed: ${e::class.simpleName}: ${e.message}", e)
             DiagnosticLog.add(this, "Overlay addView FAILED: ${e::class.simpleName}: ${e.message}")
             destroyOverlayOwner()
-            stopSelf()
+            // Keep watcher alive; do not stopSelf on overlay failure.
         }
     }
 
