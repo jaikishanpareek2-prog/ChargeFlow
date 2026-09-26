@@ -115,79 +115,38 @@ jobs:
           python3 ../.github/scripts/patch_charging_service.py
           python3 <<'PY'
           from pathlib import Path
-          import re
-
-          path = Path("app/src/main/AndroidManifest.xml")
-          s = path.read_text()
-
+          s = Path("app/src/main/AndroidManifest.xml").read_text()
           for permission in [
               '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
               '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
               '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />',
               '    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />',
-              '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
-          ]:
+              '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />']:
               if permission not in s:
-                  s = s.replace('<application', permission + "\\n    <application', 1)
-
+                  s = s.replace('<application', permission + "\\n    <application", 1)
           if 'android:name=".service.ChargingService"' not in s:
               service = (
-                  '    <service android:name=".service.ChargingService" '
-                  'android:enabled="true" android:exported="false" '
-                  'android:foregroundServiceType="specialUse">\\n'
-                  '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" '
-                  'android:value="charging_overlay_monitor" />\\n'
+                  '    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse">\\n'
+                  '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="charging_overlay_monitor" />\\n'
                   '    </service>\\n'
               )
-              s = s.replace('</application>', service + '</application>', 1)
-          else:
-              pattern = r'<service(?P<attrs>[^>]*android:name="\\.service\\.ChargingService"[^>]*)\\s*/>'
-              match = re.search(pattern, s)
-              if match:
-                  attrs = match.group("attrs")
-                  if 'android:foregroundServiceType="specialUse"' not in attrs:
-                      attrs += ' android:foregroundServiceType="specialUse"'
-                  service = (
-                      '<service' + attrs + '>\\n'
-                      '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" '
-                      'android:value="charging_overlay_monitor" />\\n'
-                      '    </service>'
-                  )
-                  s = s[:match.start()] + service + s[match.end():]
-              else:
-                  # Existing explicit service: add the required subtype if missing.
-                  if 'android:foregroundServiceType="specialUse"' not in s:
-                      s = re.sub(
-                          r'(<service[^>]*android:name="\\.service\\.ChargingService"[^>]*)>',
-                          r'\\1 android:foregroundServiceType="specialUse">',
-                          s,
-                          count=1,
-                      )
-                  marker = 'android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE'
-                  if marker not in s:
-                      s = s.replace(
-                          '</service>',
-                          '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" '
-                          'android:value="charging_overlay_monitor" />\\n    </service>',
-                          1,
-                      )
-
-          # Unplug is handled by the live service receiver; do not start another FGS.
-          s = re.sub(
-              r'\\s*<action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"\\s*/>',
-              '',
-              s,
-          )
-
-          # Remove the legacy receiver if the extracted project still ships it.
-          s = re.sub(
-              r'\\s*<receiver[^>]*PowerConnectionReceiver[^>]*>.*?</receiver>',
-              '',
-              s,
-              flags=re.S,
-          )
-
-          path.write_text(s)
+              s = s.replace('</application>', service + '    </application>')
+          if 'android:name=".service.ChargingReceiver"' not in s:
+              receiver = (
+                  '    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="false">\\n'
+                  '              <intent-filter>\\n'
+                  '                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\\n'
+                  '                  <action android:name="android.intent.action.BOOT_COMPLETED" />\\n'
+                  '                  <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />\\n'
+                  '                  <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\\n'
+                  '              </intent-filter>\\n'
+                  '          </receiver>\\n'
+              )
+              s = s.replace('</application>', receiver + '    </application>')
+          import re
+          s = re.sub(r'\\s*<action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"\\s*/>', '', s)
+          s = re.sub(r'\\s*<receiver[^>]*PowerConnectionReceiver[^>]*>.*?</receiver>', '', s, flags=re.S)
+          Path("app/src/main/AndroidManifest.xml").write_text(s)
           PY
           PY
       - name: Centralize live charging metrics
