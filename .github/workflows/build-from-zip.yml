@@ -3,6 +3,8 @@ name: Build ChargeFlow APK
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
     paths:
       - 'ChargeAnimPro.zip'
       - '.github/workflows/build-from-zip.yml'
