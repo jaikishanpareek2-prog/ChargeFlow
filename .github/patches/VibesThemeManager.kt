@@ -68,7 +68,7 @@ object VibesThemeManager {
     }
 
     fun background(themeType: ThemeType): Brush = when (themeType) {
-        ThemeType.NONE -> Brush.solidColor(Color.Black)
+        ThemeType.NONE -> Brush.verticalGradient(listOf(Color.Black, Color.Black))
         ThemeType.MIDNIGHT_GARDEN -> Brush.verticalGradient(listOf(Color(0xFF160A20), Color(0xFF05060D)))
         ThemeType.CELESTIAL_SPARKLE -> Brush.verticalGradient(listOf(Color(0xFF0B1230), Color(0xFF03050E)))
         ThemeType.ENCHANTED_FOREST -> Brush.verticalGradient(listOf(Color(0xFF0B241A), Color(0xFF030A07)))
