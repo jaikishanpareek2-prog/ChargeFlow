@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -164,7 +166,7 @@ private fun SettingsTab(prefs: PreferencesRepository) {
         }
     }
 
-    LazyColumn(Modifier.fillMaxSize().padding(20.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
         SettingSwitch("Show animation when charging", enabled) { scope.launch { prefs.setEnabled(it) } }
         Spacer(Modifier.height(12.dp))
         Text("Animation mode", style = MaterialTheme.typography.titleSmall)
