@@ -118,13 +118,13 @@ private fun SettingsTab(prefs: PreferencesRepository) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val normalMediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val normalMediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             scope.launch { prefs.setNormalMedia(uri.toString(), guessType(context, uri)) }
         }
     }
-    val fastMediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val fastMediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             scope.launch { prefs.setFastMedia(uri.toString(), guessType(context, uri)) }
@@ -171,8 +171,8 @@ private fun SettingsTab(prefs: PreferencesRepository) {
         Spacer(Modifier.height(20.dp))
         Text("Custom media (overrides the theme visual)", style = MaterialTheme.typography.titleSmall)
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = { normalMediaPicker.launch("*/*") }) { Text("Normal charging…") }
-            OutlinedButton(onClick = { fastMediaPicker.launch("*/*") }) { Text("Fast charging…") }
+            OutlinedButton(onClick = { normalMediaPicker.launch(arrayOf("*/*")) }) { Text("Normal charging…") }
+            OutlinedButton(onClick = { fastMediaPicker.launch(arrayOf("*/*")) }) { Text("Fast charging…") }
         }
     }
 }
