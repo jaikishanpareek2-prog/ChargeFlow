@@ -59,7 +59,6 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
             } else if (vibe != ThemeType.NONE) {
                 VibeVisual(vibe, Modifier.fillMaxSize())
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("${status.percent}%", fontSize = 44.sp, color = Color(0xFFEAF4FF))
                     Text(speedLabel(status), fontSize = 14.sp, color = accent)
                 }
