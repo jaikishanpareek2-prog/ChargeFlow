@@ -12,7 +12,9 @@ object ChargingMetricsProvider {
     fun acquire(context: Context): StateFlow<ChargingMetrics> {
         if (manager == null) manager = ChargingMetricsManager(context.applicationContext)
         users += 1
-        manager!!.start()
+        if (users == 1) {
+            manager!!.start()
+        }
         return manager!!.state
     }
 
