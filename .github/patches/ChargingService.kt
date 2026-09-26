@@ -136,7 +136,7 @@ class ChargingService : Service() {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_USER_PRESENT)
         }, if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU)
-            android.content.Context.RECEIVER_EXPORTED else 0)
+            android.content.Context.RECEIVER_NOT_EXPORTED else 0)
         DiagnosticLog.add(this, "Runtime system receiver registered")
 
         prefsJob = serviceScope.launch {
