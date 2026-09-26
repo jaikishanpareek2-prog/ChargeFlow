@@ -5,6 +5,7 @@ import android.content.ContentProvider
 import android.content.ContentValues
 import android.database.Cursor
 import android.net.Uri
+import com.chargeanim.pro.CrashCapture
 
 /**
  * Early startup hook for crash capture.
