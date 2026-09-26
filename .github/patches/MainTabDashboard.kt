@@ -253,7 +253,8 @@ private fun DiagnosticsTab(active: Boolean) {
             Text("No completed charging sessions yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.heightIn(max = 220.dp)) {
-                lazyItems(sessions.take(10), key = { session -> session.startTime.toString() + ":" + session.endTime + ":" + session.finalLevel }) { session ->
+                lazyItems(sessions.take(10).mapIndexed { index, session -> index to session }, key = { it.first }) { entry ->
+                    val session = entry.second
                     val started = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.US).format(java.util.Date(session.startTime))
                     val ended = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(session.endTime))
                     val duration = ((session.endTime - session.startTime).coerceAtLeast(0L) / 60000L)
@@ -272,7 +273,8 @@ private fun DiagnosticsTab(active: Boolean) {
         }
         Spacer(Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxSize()) {
-            lazyItems(lines, key = { it }) { line ->
+            lazyItems(lines.mapIndexed { index, line -> index to line }, key = { it.first }) { entry ->
+                val line = entry.second
                 Text(line, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).padding(8.dp))
             }
         }
