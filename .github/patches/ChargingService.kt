@@ -180,7 +180,14 @@ class ChargingService : Service() {
                 stopSelf(startId)
                 return START_NOT_STICKY
             }
-            ACTION_PLUGGED_IN, null -> evaluateAnimationState("SERVICE_START", false)
+            ACTION_PLUGGED_IN, null -> {
+                evaluateAnimationState("SERVICE_START", false)
+                if (!isCurrentlyCharging()) {
+                    DiagnosticLog.add(this, "Service start found no active charging; stopping watcher")
+                    stopSelf(startId)
+                    return START_NOT_STICKY
+                }
+            }
             ACTION_MONITOR -> {
                 evaluateAnimationState("SERVICE_MONITOR", false)
                 if (!isCurrentlyCharging()) {
