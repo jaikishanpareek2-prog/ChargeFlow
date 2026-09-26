@@ -82,11 +82,12 @@ class ChargingMetricsManager(private val context: Context) {
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
         val percent = ((level.toDouble() / scale) * 100.0).roundToInt().coerceIn(0, 100)
         val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        val plug = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+        // FULL is active charging only while external power remains connected.
+        val charging = (status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL) && plug != 0
         val full = status == BatteryManager.BATTERY_STATUS_FULL || percent >= 100
         val voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) / 1000.0
         val temperature = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10.0
-        val plug = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
         val currentMicroAmps = readCurrentMicroAmps()
         val currentAmps = (currentMicroAmps / 1_000_000.0).coerceAtLeast(0.0)
         val power = (voltage * currentAmps).coerceAtLeast(0.0)
