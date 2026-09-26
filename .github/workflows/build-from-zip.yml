@@ -1,4 +1,5 @@
 name: Build ChargeFlow APK
+# Material3 dashboard CI: rebuild after every UI patch.
 
 on:
   push:
