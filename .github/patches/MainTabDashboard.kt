@@ -1,5 +1,6 @@
 package com.chargeanim.pro.ui.main
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -32,7 +33,7 @@ private enum class DashTab(val label: String) {
     SKINS("Skins"), VIBES("Vibes"), CONFIG("Config"), MONITOR("Monitor"), TELEMETRY("Telemetry")
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainTabDashboard(prefs: PreferencesRepository, telemetry: BatteryTelemetryManager? = null, onLaunchOverlay: () -> Unit = {}) {
     val pagerState = rememberPagerState(pageCount = { DashTab.entries.size })
