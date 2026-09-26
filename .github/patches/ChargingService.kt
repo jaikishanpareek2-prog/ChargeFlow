@@ -94,6 +94,8 @@ class ChargingService : Service() {
                     userPresentSincePlugged = false
                     removeOverlay("POWER_DISCONNECTED")
                     evaluateAnimationState("POWER_DISCONNECTED", false)
+                    DiagnosticLog.add(context, "Runtime watcher stopping after power disconnect")
+                    stopSelf()
                 }
                 Intent.ACTION_BATTERY_CHANGED -> evaluateAnimationState("BATTERY_CHANGED", false)
                 Intent.ACTION_SCREEN_ON -> evaluateAnimationState("SCREEN_ON", false)
