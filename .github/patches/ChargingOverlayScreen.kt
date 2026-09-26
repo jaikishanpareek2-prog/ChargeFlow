@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +24,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.chargeanim.pro.data.MediaSelection
 import com.chargeanim.pro.media.MediaRenderer
@@ -38,19 +38,19 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Row(Modifier.align(Alignment.TopCenter).padding(top = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Filled.Bolt, null, tint = accent, modifier = Modifier.size(16.dp))
-            Text("${status.percent}%", fontSize = 15.sp, color = Color(0xFFEAF4FF))
+            Text("${status.percent}%", style = MaterialTheme.typography.labelLarge, color = Color.White)
             Text("•", color = Color(0xFF44506A), fontSize = 13.sp)
             Text(speedLabel(status), fontSize = 13.sp, color = accent)
             if (status.wattage != null) {
                 Text("•", color = Color(0xFF44506A), fontSize = 13.sp)
-                Text("%.1f W".format(status.wattage), fontSize = 13.sp, color = Color(0xFF8B9AB0))
+                Text("%.1f W".format(status.wattage), style = MaterialTheme.typography.titleLarge, color = Color.White.copy(alpha = 0.9f))
             }
         }
         Box(Modifier.align(Alignment.Center).size(260.dp), contentAlignment = Alignment.Center) {
             if (media.uri != null) MediaRenderer(media, Modifier.fillMaxSize()) {}
             else ThemeVisual(theme, Modifier.fillMaxSize()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${status.percent}%", fontSize = 44.sp, color = Color(0xFFEAF4FF))
+                    Text("${status.percent}%", style = MaterialTheme.typography.displayMedium, color = Color.White)
                     Text(speedLabel(status), fontSize = 14.sp, color = accent)
                 }
             }
@@ -91,7 +91,7 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
 @Composable private fun StatusBanner(status: BatteryStatusData) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         Icon(Icons.Filled.Thermostat, null, tint = Color(0xFF6B7788), modifier = Modifier.size(14.dp))
-        Text(status.temperatureC?.let { "%.0f°C".format(it) } ?: "—", fontSize = 12.sp, color = Color(0xFF9AA8BA))
+        Text(status.temperatureC?.let { "%.0f°C".format(it) } ?: "—", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f))
     }
 }
 @Composable private fun TimeBadge(status: BatteryStatusData) {
