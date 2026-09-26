@@ -117,18 +117,7 @@ jobs:
           cp ../.github/patches/ChargingMetricsProvider.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetricsProvider.kt
           cp ../.github/patches/CrashCapture.kt app/src/main/java/com/chargeanim/pro/CrashCapture.kt
           cp ../.github/patches/CrashCaptureProvider.kt app/src/main/java/com/chargeanim/pro/diagnostics/CrashCaptureProvider.kt
-          cat > app/src/main/java/com/chargeanim/pro/ChargeFlowApplication.kt <<'EOF'
-          package com.chargeanim.pro
-
-          import android.app.Application
-
-          class ChargeFlowApplication : Application() {
-              override fun onCreate() {
-                  super.onCreate()
-                  CrashCapture.install(this)
-              }
-          }
-          EOF
+          # ChargeFlowApplication is supplied by CrashCapture.kt.
           python3 ../.github/scripts/patch_charging_service.py
           python3 <<'PY'
           from pathlib import Path
