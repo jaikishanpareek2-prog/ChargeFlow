@@ -130,7 +130,12 @@ jobs:
               if permission not in s:
                   s = s.replace('<application', permission + "\n    <application", 1)
           if 'android:name=".service.ChargingService"' not in s:
-              s = s.replace('</application>', '    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse" />\n    </application>')
+              service = (
+                  '    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse">\n'
+                  '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="charging_overlay_monitor" />\n'
+                  '    </service>\n'
+              )
+              s = s.replace('</application>', service + '    </application>')
           if 'android:name=".service.ChargingReceiver"' not in s:
               receiver = (
                   '    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="false">\n'
