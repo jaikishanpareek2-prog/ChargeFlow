@@ -180,9 +180,25 @@ class ChargingService : Service() {
                 stopSelf(startId)
                 return START_NOT_STICKY
             }
-            ACTION_PLUGGED_IN, ACTION_MONITOR, null -> evaluateAnimationState("SERVICE_START", false)
+            ACTION_PLUGGED_IN, null -> evaluateAnimationState("SERVICE_START", false)
+            ACTION_MONITOR -> {
+                evaluateAnimationState("SERVICE_MONITOR", false)
+                if (!isCurrentlyCharging()) {
+                    DiagnosticLog.add(this, "Monitor request found no active charging; stopping watcher")
+                    stopSelf(startId)
+                    return START_NOT_STICKY
+                }
+            }
         }
         return START_NOT_STICKY
+    }
+
+    private fun isCurrentlyCharging(): Boolean {
+        val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+        return (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL) && plugged != 0
     }
 
     private fun evaluateAnimationState(reason: String, haptic: Boolean) {
