@@ -114,7 +114,23 @@ private fun SettingsTab(prefs: PreferencesRepository) {
     val overlayGranted = remember { mutableStateOf(Settings.canDrawOverlays(context)) }
 
     DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) overlayGranted.value = Settings.canDrawOverlays(context) }
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val granted = Settings.canDrawOverlays(context)
+                overlayGranted.value = granted
+                if (granted) {
+                    runCatching {
+                        val intent = Intent(context, com.chargeanim.pro.service.ChargingService::class.java).apply {
+                            action = com.chargeanim.pro.service.ChargingService.ACTION_MONITOR
+                        }
+                        ContextCompat.startForegroundService(context, intent)
+                        DiagnosticLog.add(context, "Overlay permission granted; charging monitor recheck requested")
+                    }.onFailure {
+                        DiagnosticLog.add(context, "Monitor recheck FAILED: " + it::class.simpleName + ": " + it.message)
+                    }
+                }
+            }
+        }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
