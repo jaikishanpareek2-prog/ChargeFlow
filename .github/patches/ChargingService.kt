@@ -29,10 +29,10 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.lifecycle.setViewTreeSavedStateRegistryOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
-import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.chargeanim.pro.alert.ChargingAlertManager
 import com.chargeanim.pro.data.AnimationMode
 import com.chargeanim.pro.data.MediaSelection
@@ -171,7 +171,7 @@ class ChargingService : Service() {
             Log.e(TAG, "startForeground failed", e)
             DiagnosticLog.add(this, "startForeground FAILED: ${e::class.simpleName}: ${e.message}")
             stopSelf(startId)
-            return START_STICKY
+            return START_NOT_STICKY
         }
         when (intent?.action) {
             ACTION_UNPLUGGED -> {
@@ -308,17 +308,14 @@ class ChargingService : Service() {
             Log.e(TAG, "Overlay addView failed: SecurityException", e)
             DiagnosticLog.add(this, "Overlay addView FAILED: SecurityException: ${e.message}")
             destroyOverlayOwner()
-            // Keep the permanent watcher alive; the next relevant event will retry.
         } catch (e: WindowManager.BadTokenException) {
             Log.e(TAG, "Overlay addView failed: BadTokenException", e)
             DiagnosticLog.add(this, "Overlay addView FAILED: BadTokenException: ${e.message}")
             destroyOverlayOwner()
-            // Keep watcher alive; do not stopSelf on overlay failure.
         } catch (e: Exception) {
             Log.e(TAG, "Overlay addView failed: ${e::class.simpleName}: ${e.message}", e)
             DiagnosticLog.add(this, "Overlay addView FAILED: ${e::class.simpleName}: ${e.message}")
             destroyOverlayOwner()
-            // Keep watcher alive; do not stopSelf on overlay failure.
         }
     }
 
