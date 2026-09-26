@@ -184,3 +184,20 @@ object CrashCapture {
     private fun timestamp(): String =
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z", Locale.US).format(Date())
 }
+
+class ChargeFlowApplication : android.app.Application() {
+    override fun onCreate() {
+        super.onCreate()
+        CrashCapture.install(this)
+        runCatching {
+            val report = getSharedPreferences("chargeflow_crash_capture", MODE_PRIVATE)
+                .getString("last_crash", null)
+            if (!report.isNullOrBlank()) {
+                val first = report.lineSequence().firstOrNull { it.startsWith("Exception:") }
+                    ?: "Exception: unknown"
+                com.chargeanim.pro.diagnostics.DiagnosticLog.add(this, "PREVIOUS PROCESS CRASH CAPTURED")
+                com.chargeanim.pro.diagnostics.DiagnosticLog.add(this, first)
+            }
+        }
+    }
+}
