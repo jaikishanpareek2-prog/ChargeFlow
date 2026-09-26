@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.chargeanim.pro.data.MediaSelection
+import com.chargeanim.pro.data.PreferencesRepository
 import com.chargeanim.pro.media.MediaRenderer
 import com.chargeanim.pro.telemetry.BatteryStatusData
 import com.chargeanim.pro.ui.theme.ThemeCatalog
@@ -43,6 +44,8 @@ import com.chargeanim.pro.ui.theme.VibesThemeManager
 @Composable
 fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: MediaSelection, showTelemetry: Boolean = true) {
     val context = LocalContext.current
+    val prefs = remember { PreferencesRepository(context.applicationContext) }
+    val amoledMode by prefs.amoledMode.collectAsStateWithLifecycle(initialValue = true)
     var vibe by remember { mutableStateOf(VibesThemeManager.getSelectedTheme(context)) }
     DisposableEffect(context) {
         val preferences = context.applicationContext.getSharedPreferences("chargeflow_vibes", android.content.Context.MODE_PRIVATE)
@@ -55,7 +58,7 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
         onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
     }
     val accent = if (vibe != ThemeType.NONE) VibesThemeManager.accent(vibe) else ThemeCatalog.getValue(theme).accentPrimary
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().background(if (amoledMode) Color.Black else Color(0xFF0A0E1A))) {
         Row(Modifier.align(Alignment.TopCenter).padding(top = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Filled.Bolt, null, tint = accent, modifier = Modifier.size(16.dp))
             Text("${status.percent}%", fontSize = 15.sp, color = Color(0xFFEAF4FF))
