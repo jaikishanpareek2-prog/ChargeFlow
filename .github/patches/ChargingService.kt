@@ -172,10 +172,15 @@ class ChargingService : Service() {
             return START_NOT_STICKY
         }
         when (intent?.action) {
-            ACTION_UNPLUGGED -> removeOverlay("ACTION_UNPLUGGED")
+            ACTION_UNPLUGGED -> {
+                removeOverlay("ACTION_UNPLUGGED")
+                DiagnosticLog.add(this, "Stopping watcher after explicit unplug event")
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
             ACTION_PLUGGED_IN, ACTION_MONITOR, null -> evaluateAnimationState("SERVICE_START", false)
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun evaluateAnimationState(reason: String, haptic: Boolean) {
