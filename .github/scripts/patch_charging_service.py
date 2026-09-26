@@ -34,10 +34,10 @@ def fix(path: Path) -> None:
             AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
         }'''
     new_mode = '''        val shouldShow = enabled && charging && when (animationMode) {
-            // Always On: show only while keyguard is locked.
-            AnimationMode.ALWAYS_ON -> locked
+            // Always On: remain visible for the whole charging session.
+            AnimationMode.ALWAYS_ON -> true
             // Temporary: show from plug until the user unlocks once this session.
-            AnimationMode.TEMPORARY -> !userPresentSincePlugged
+            AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
         }'''
     if old_mode in s:
         s = s.replace(old_mode, new_mode, 1)
