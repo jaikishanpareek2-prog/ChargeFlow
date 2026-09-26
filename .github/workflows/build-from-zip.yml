@@ -160,8 +160,7 @@ jobs:
           p = Path("app/src/main/java/com/chargeanim/pro/service/ChargingService.kt")
           if p.exists():
               s = p.read_text()
-              s = s.replace("import androidx.savedstate.setViewTreeSavedStateRegistryOwner" + chr(10), "")
-              s = s.replace("            setViewTreeSavedStateRegistryOwner(owner)" + chr(10), "")
+              s = "".join(line for line in s.splitlines(True) if "setViewTreeSavedStateRegistryOwner" not in line)
               p.write_text(s)
           PY
       - name: Centralize live charging metrics
