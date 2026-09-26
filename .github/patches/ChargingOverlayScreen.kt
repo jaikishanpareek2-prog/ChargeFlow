@@ -16,8 +16,11 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,7 +43,17 @@ import com.chargeanim.pro.ui.theme.VibesThemeManager
 @Composable
 fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: MediaSelection, showTelemetry: Boolean = true) {
     val context = LocalContext.current
-    val vibe = remember { VibesThemeManager.getSelectedTheme(context) }
+    var vibe by remember { mutableStateOf(VibesThemeManager.getSelectedTheme(context)) }
+    DisposableEffect(context) {
+        val preferences = context.applicationContext.getSharedPreferences("chargeflow_vibes", android.content.Context.MODE_PRIVATE)
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "selected_vibe") {
+                vibe = VibesThemeManager.getSelectedTheme(context)
+            }
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val accent = if (vibe != ThemeType.NONE) VibesThemeManager.accent(vibe) else ThemeCatalog.getValue(theme).accentPrimary
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Row(Modifier.align(Alignment.TopCenter).padding(top = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
