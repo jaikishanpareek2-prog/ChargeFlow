@@ -42,7 +42,6 @@ import com.chargeanim.pro.telemetry.ChargingMetricsProvider
 import com.chargeanim.pro.ui.overlay.ChargingOverlayScreen
 import com.chargeanim.pro.ui.theme.ThemeCatalog
 import com.chargeanim.pro.ui.theme.ThemeId
-import com.chargeanim.pro.ui.theme.ThemeVisual
 import kotlinx.coroutines.launch
 
 private enum class DashboardTab(val label: String) {
@@ -82,14 +81,15 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
-            beyondViewportPageCount = 1
+            beyondViewportPageCount = 0,
+            key = { DashboardTab.entries[it].name }
         ) { page ->
             when (DashboardTab.entries[page]) {
                 DashboardTab.THEMES -> ThemesTab(prefs)
                 DashboardTab.VIBES -> VibesTab()
                 DashboardTab.SETTINGS -> SettingsTab(prefs)
-                DashboardTab.PREVIEW -> PreviewTab(prefs, onLaunchOverlay)
-                DashboardTab.DIAGNOSTICS -> DiagnosticsTab()
+                DashboardTab.PREVIEW -> if (pagerState.currentPage == page) PreviewTab(prefs, onLaunchOverlay)
+                DashboardTab.DIAGNOSTICS -> DiagnosticsTab(active = pagerState.currentPage == page)
             }
         }
     }
@@ -100,7 +100,7 @@ private fun ThemesTab(prefs: PreferencesRepository) {
     val scope = rememberCoroutineScope()
     val selected by prefs.theme.collectAsStateWithLifecycle(initialValue = ThemeId.FUTURISTIC)
     LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
-        items(ThemeId.entries.toList()) { themeId ->
+        items(items = ThemeId.entries, key = { it.name }) { themeId ->
             ThemeCard(themeId, themeId == selected) { scope.launch { prefs.setTheme(themeId) } }
         }
     }
@@ -109,9 +109,13 @@ private fun ThemesTab(prefs: PreferencesRepository) {
 @Composable
 private fun ThemeCard(themeId: ThemeId, isSelected: Boolean, onClick: () -> Unit) {
     val style = ThemeCatalog.getValue(themeId)
-    Column(Modifier.clip(RoundedCornerShape(16.dp)).background(Color(0xFF0A0E1A)).then(if (isSelected) Modifier.background(style.accentPrimary.copy(alpha = 0.08f)) else Modifier).clickable(onClick = onClick).padding(10.dp)) {
-        Box(Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(10.dp))) {
-            ThemeVisual(themeId = themeId, modifier = Modifier.fillMaxSize()) { Text("72%", color = Color(0xFFEAF4FF)) }
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+        .background(if (isSelected) style.accentPrimary.copy(alpha = 0.10f) else Color(0xFF0A0E1A), RoundedCornerShape(16.dp))
+        .clickable(onClick = onClick).padding(10.dp)) {
+        Box(Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(74.dp).clip(RoundedCornerShape(37.dp)).background(style.accentPrimary.copy(alpha = 0.16f)))
+            Box(Modifier.size(50.dp).clip(RoundedCornerShape(25.dp)).background(style.accentSecondary.copy(alpha = 0.14f)))
+            Text("72%", color = Color(0xFFEAF4FF), style = MaterialTheme.typography.titleLarge)
         }
         Spacer(Modifier.height(8.dp))
         Text(themeId.label, color = Color(0xFFEAF4FF), style = MaterialTheme.typography.bodyMedium)
@@ -213,22 +217,28 @@ private fun SettingsTab(prefs: PreferencesRepository) {
 }
 
 @Composable
-private fun DiagnosticsTab() {
+private fun DiagnosticsTab(active: Boolean) {
     val context = LocalContext.current
-    var lines by remember { mutableStateOf(DiagnosticLog.readAll(context)) }
-    var sessions by remember { mutableStateOf(ChargingHistoryStore.all(context).reversed()) }
-    LaunchedEffect(Unit) {
+    var lines by remember { mutableStateOf(emptyList<String>()) }
+    var sessions by remember { mutableStateOf(emptyList<com.chargeanim.pro.history.ChargingSession>()) }
+
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
         while (true) {
-            kotlinx.coroutines.delay(2000L)
             lines = DiagnosticLog.readAll(context)
             sessions = ChargingHistoryStore.all(context).reversed()
+            kotlinx.coroutines.delay(2000L)
         }
     }
-    val metricsState = remember { ChargingMetricsProvider.acquire(context.applicationContext) }
-    val metrics by metricsState.collectAsStateWithLifecycle()
 
-    DisposableEffect(Unit) {
-        onDispose { ChargingMetricsProvider.release() }
+    val metricsState = remember(active) {
+        if (active) ChargingMetricsProvider.acquire(context.applicationContext) else null
+    }
+    val metrics by (metricsState ?: kotlinx.coroutines.flow.MutableStateFlow(ChargingMetrics()))
+        .collectAsStateWithLifecycle()
+
+    DisposableEffect(active) {
+        onDispose { if (active) ChargingMetricsProvider.release() }
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
@@ -242,11 +252,12 @@ private fun DiagnosticsTab() {
             Text("No completed charging sessions yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.heightIn(max = 220.dp)) {
-                lazyItems(sessions.take(10)) { session ->
+                lazyItems(sessions.take(10), key = { session -> session.startTime.toString() + ":" + session.endTime + ":" + session.finalLevel }) { session ->
                     val started = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.US).format(java.util.Date(session.startTime))
                     val ended = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(session.endTime))
                     val duration = ((session.endTime - session.startTime).coerceAtLeast(0L) / 60000L)
-                    Text("$started → $ended   $duration min   ${session.finalLevel}%", style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).padding(8.dp))
+                    Text(started + " → " + ended + "   " + duration + " min   " + session.finalLevel + "%", style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).padding(8.dp))
                 }
             }
         }
@@ -260,7 +271,7 @@ private fun DiagnosticsTab() {
         }
         Spacer(Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxSize()) {
-            lazyItems(lines) { line ->
+            lazyItems(lines, key = { it }) { line ->
                 Text(line, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).padding(8.dp))
             }
         }
