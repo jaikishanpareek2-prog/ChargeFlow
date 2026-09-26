@@ -71,6 +71,7 @@ class ChargingService : Service() {
     private var stateJob: Job? = null
     private var metricsJob: Job? = null
     private var prefsJob: Job? = null
+    private var soundJob: Job? = null
     private var animationMode = AnimationMode.TEMPORARY
     private var enabled = true
     private var soundEnabled = false
@@ -145,20 +146,21 @@ class ChargingService : Service() {
             combine(
                 prefsRepo.enabled,
                 prefsRepo.animationMode,
-                prefsRepo.soundEnabled,
                 prefsRepo.theme,
                 prefsRepo.normalMedia,
                 prefsRepo.fastMedia
-            ) { enabledValue, mode, sound, theme, normalMedia, fastMedia ->
-                PrefState(enabledValue, mode, sound, theme, normalMedia, fastMedia)
+            ) { enabledValue, mode, theme, normalMedia, fastMedia ->
+                PrefState(enabledValue, mode, theme, normalMedia, fastMedia)
             }.collect { state ->
                 enabled = state.enabled
                 animationMode = state.mode
-                soundEnabled = state.sound
                 themeState.value = state.theme
                 mediaState.value = if (statusState.value.isFastCharging) state.fastMedia else state.normalMedia
                 evaluateAnimationState("PREFERENCES", false)
             }
+        }
+        soundJob = serviceScope.launch {
+            prefsRepo.soundEnabled.collect { soundEnabled = it }
         }
     }
 
@@ -379,6 +381,8 @@ class ChargingService : Service() {
         metricsJob = null
         prefsJob?.cancel()
         prefsJob = null
+        soundJob?.cancel()
+        soundJob = null
         runCatching { unregisterReceiver(powerReceiver) }
         com.chargeanim.pro.telemetry.ChargingMetricsProvider.release()
         telemetry.stop()
@@ -406,7 +410,7 @@ class ChargingService : Service() {
     }
 
     private data class OverlayState(val status: BatteryStatusData, val theme: ThemeId, val media: MediaSelection)
-    private data class PrefState(val enabled: Boolean, val mode: AnimationMode, val sound: Boolean, val theme: ThemeId, val normalMedia: MediaSelection, val fastMedia: MediaSelection)
+    private data class PrefState(val enabled: Boolean, val mode: AnimationMode, val theme: ThemeId, val normalMedia: MediaSelection, val fastMedia: MediaSelection)
 }
 
 private class OverlayLifecycleOwner : LifecycleOwner, ViewModelStoreOwner {
