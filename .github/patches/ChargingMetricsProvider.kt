@@ -11,9 +11,10 @@ object ChargingMetricsProvider {
     @Synchronized
     fun acquire(context: Context): StateFlow<ChargingMetrics> {
         if (manager == null) manager = ChargingMetricsManager(context.applicationContext)
+        val instance = manager!!
         users += 1
-        manager!!.start()
-        return manager!!.state
+        if (users == 1) instance.start()
+        return instance.state
     }
 
     @Synchronized

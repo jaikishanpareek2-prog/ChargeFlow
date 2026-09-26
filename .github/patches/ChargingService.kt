@@ -136,7 +136,7 @@ class ChargingService : Service() {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_USER_PRESENT)
         }, if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU)
-            android.content.Context.RECEIVER_EXPORTED else 0)
+            android.content.Context.RECEIVER_NOT_EXPORTED else 0)
         DiagnosticLog.add(this, "Runtime system receiver registered")
 
         prefsJob = serviceScope.launch {
@@ -172,18 +172,41 @@ class ChargingService : Service() {
             return START_NOT_STICKY
         }
         when (intent?.action) {
-            ACTION_UNPLUGGED -> removeOverlay("ACTION_UNPLUGGED")
-            ACTION_PLUGGED_IN, ACTION_MONITOR, null -> evaluateAnimationState("SERVICE_START", false)
+            ACTION_UNPLUGGED -> {
+                removeOverlay("ACTION_UNPLUGGED")
+                DiagnosticLog.add(this, "Stopping watcher after explicit unplug event")
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
+            ACTION_PLUGGED_IN, null -> evaluateAnimationState("SERVICE_START", false)
+            ACTION_MONITOR -> {
+                evaluateAnimationState("SERVICE_START", false)
+                if (!isCurrentlyCharging()) {
+                    DiagnosticLog.add(this, "Monitor start found no active charging session; stopping watcher")
+                    stopSelf(startId)
+                    return START_NOT_STICKY
+                }
+            }
         }
-        return START_STICKY
+        return START_NOT_STICKY
+    }
+
+    private fun isCurrentlyCharging(): Boolean {
+        val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+        return (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL) && plugged != 0
     }
 
     private fun evaluateAnimationState(reason: String, haptic: Boolean) {
         val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
         val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+        // FULL only counts as charging when external power is still connected.
+        // Otherwise unplugging at 100% can immediately recreate the overlay.
         val charging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
-            status == BatteryManager.BATTERY_STATUS_FULL) && (plugged != 0 || status == BatteryManager.BATTERY_STATUS_FULL)
+            status == BatteryManager.BATTERY_STATUS_FULL) && plugged != 0
         val locked = keyguardManager.isKeyguardLocked
 
         if (charging != lastCharging) {
@@ -192,7 +215,7 @@ class ChargingService : Service() {
         }
 
         val shouldShow = enabled && charging && when (animationMode) {
-            AnimationMode.ALWAYS_ON -> locked
+            AnimationMode.ALWAYS_ON -> true
             AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
         }
 

@@ -1,7 +1,10 @@
 name: Build ChargeFlow APK
+# Material3 dashboard CI: rebuild after every UI patch.
 
 on:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
     paths:
       - 'ChargeAnimPro.zip'
@@ -110,6 +113,8 @@ jobs:
           cp ../.github/patches/ChargingOverlayScreen.kt app/src/main/java/com/chargeanim/pro/ui/overlay/ChargingOverlayScreen.kt
           cp ../.github/patches/DiagnosticLog.kt app/src/main/java/com/chargeanim/pro/diagnostics/DiagnosticLog.kt
           cp ../.github/patches/MainTabDashboard.kt app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt
+          cp ../.github/patches/ChargeFlowTheme.kt app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowTheme.kt
+          python3 ../.github/scripts/wrap_main_activity_theme.py
           cp ../.github/patches/ChargingMetrics.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetrics.kt
           cp ../.github/patches/ChargingMetricsProvider.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetricsProvider.kt
           python3 ../.github/scripts/patch_charging_service.py
@@ -125,7 +130,12 @@ jobs:
               if permission not in s:
                   s = s.replace('<application', permission + "\n    <application", 1)
           if 'android:name=".service.ChargingService"' not in s:
-              s = s.replace('</application>', '    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse" />\n    </application>')
+              service = (
+                  '    <service android:name=".service.ChargingService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse">\n'
+                  '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="charging_overlay_monitor" />\n'
+                  '    </service>\n'
+              )
+              s = s.replace('</application>', service + '    </application>')
           if 'android:name=".service.ChargingReceiver"' not in s:
               receiver = (
                   '    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="false">\n'
