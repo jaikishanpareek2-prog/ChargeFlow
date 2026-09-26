@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chargeanim.pro.ui.theme.ThemeType
-import com.chargeanim.pro.ui.theme.VibeVisual
 import com.chargeanim.pro.ui.theme.VibesThemeManager
 
 @Composable
@@ -31,7 +30,7 @@ fun VibesTab() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(ThemeType.entries.toList()) { type ->
+        items(items = ThemeType.entries, key = { it.name }) { type ->
             VibeCard(type, type == selected) {
                 VibesThemeManager.setSelectedTheme(context, type)
                 selected = type
@@ -44,44 +43,22 @@ fun VibesTab() {
 private fun VibeCard(type: ThemeType, isSelected: Boolean, onClick: () -> Unit) {
     val accent = VibesThemeManager.accent(type)
     Column(
-        Modifier
-            .fillMaxWidth()
-            .background(
-                if (isSelected) accent.copy(alpha = 0.12f) else Color(0xFF080B14),
-                RoundedCornerShape(16.dp)
-            )
+        Modifier.fillMaxWidth()
+            .background(if (isSelected) accent.copy(alpha = 0.12f) else Color(0xFF080B14), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(10.dp)
     ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(130.dp)
-                .background(Color.Black, RoundedCornerShape(10.dp))
-        ) {
-            VibeVisual(type, Modifier.fillMaxSize())
+        Box(Modifier.fillMaxWidth().height(130.dp).background(Color.Black, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
             if (type != ThemeType.NONE) {
-                androidx.compose.material3.Text(
-                    "72%",
-                    color = Color(0xFFEAF4FF),
-                    fontSize = 28.sp,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                Box(Modifier.size(76.dp).background(accent.copy(alpha = 0.16f), RoundedCornerShape(38.dp)))
+                Box(Modifier.size(52.dp).background(accent.copy(alpha = 0.10f), RoundedCornerShape(26.dp)))
+                androidx.compose.material3.Text("72%", color = Color(0xFFEAF4FF), fontSize = 28.sp)
             } else {
-                androidx.compose.material3.Text(
-                    "Theme",
-                    color = Color(0xFF8793A8),
-                    fontSize = 22.sp,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                androidx.compose.material3.Text("Theme", color = Color(0xFF8793A8), fontSize = 22.sp)
             }
         }
         Spacer(Modifier.height(8.dp))
-        androidx.compose.material3.Text(
-            VibesThemeManager.label(type),
-            color = Color(0xFFEAF4FF),
-            style = MaterialTheme.typography.bodyMedium
-        )
+        androidx.compose.material3.Text(VibesThemeManager.label(type), color = Color(0xFFEAF4FF), style = MaterialTheme.typography.bodyMedium)
         androidx.compose.material3.Text(
             if (isSelected) "Selected" else if (type == ThemeType.NONE) "Use normal theme visual" else "Soft ambient vibe",
             color = if (isSelected) accent else Color(0xFF8793A8),
