@@ -29,10 +29,6 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
-import androidx.lifecycle.setViewTreeSavedStateRegistryOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
 import com.chargeanim.pro.alert.ChargingAlertManager
 import com.chargeanim.pro.data.AnimationMode
 import com.chargeanim.pro.data.MediaSelection
@@ -254,7 +250,6 @@ class ChargingService : Service() {
 
         DiagnosticLog.add(this, "Creating Compose overlay lifecycle owner")
         val owner = OverlayLifecycleOwner().apply {
-            performRestore()
             handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
             handleLifecycleEvent(Lifecycle.Event.ON_START)
             handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
@@ -393,12 +388,9 @@ class ChargingService : Service() {
     private data class PrefState(val enabled: Boolean, val mode: AnimationMode, val theme: ThemeId, val normalMedia: MediaSelection, val fastMedia: MediaSelection)
 }
 
-private class OverlayLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
+private class OverlayLifecycleOwner : LifecycleOwner, ViewModelStoreOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
-    private val savedStateRegistryController = SavedStateRegistryController.create(this)
     override val viewModelStore = ViewModelStore()
     override val lifecycle: Lifecycle get() = lifecycleRegistry
-    override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
-    fun performRestore() = savedStateRegistryController.performRestore(null)
     fun handleLifecycleEvent(event: Lifecycle.Event) = lifecycleRegistry.handleLifecycleEvent(event)
 }
