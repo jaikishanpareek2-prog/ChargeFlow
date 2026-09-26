@@ -41,6 +41,40 @@ def fix(path: Path) -> None:
         }'''
     if old_mode in s:
         s = s.replace(old_mode, new_mode, 1)
+    old_monitor = "\n".join([
+        '            ACTION_PLUGGED_IN, ACTION_MONITOR, null -> evaluateAnimationState("SERVICE_START", false)',
+        '        }',
+        '        return START_NOT_STICKY',
+        '    }',
+        '',
+        '    private fun evaluateAnimationState(reason: String, haptic: Boolean) {',
+    ])
+    new_monitor = "\n".join([
+        '            ACTION_PLUGGED_IN, null -> evaluateAnimationState("SERVICE_START", false)',
+        '            ACTION_MONITOR -> {',
+        '                evaluateAnimationState("SERVICE_MONITOR", false)',
+        '                if (!isCurrentlyCharging()) {',
+        '                    DiagnosticLog.add(this, "Monitor request found no active charging; stopping watcher")',
+        '                    stopSelf(startId)',
+        '                    return START_NOT_STICKY',
+        '                }',
+        '            }',
+        '        }',
+        '        return START_NOT_STICKY',
+        '    }',
+        '',
+        '    private fun isCurrentlyCharging(): Boolean {',
+        '        val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))',
+        '        val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1',
+        '        val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0',
+        '        return (status == BatteryManager.BATTERY_STATUS_CHARGING ||',
+        '            status == BatteryManager.BATTERY_STATUS_FULL) && plugged != 0',
+        '    }',
+        '',
+        '    private fun evaluateAnimationState(reason: String, haptic: Boolean) {',
+    ])
+    if old_monitor in s:
+        s = s.replace(old_monitor, new_monitor, 1)
     path.write_text(s)
 
 # Fix patch source and extracted service if present
