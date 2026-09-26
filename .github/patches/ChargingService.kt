@@ -72,9 +72,11 @@ class ChargingService : Service() {
     private var metricsJob: Job? = null
     private var prefsJob: Job? = null
     private var soundJob: Job? = null
+    private var autoHideJob: Job? = null
     private var animationMode = AnimationMode.TEMPORARY
     private var enabled = true
     private var soundEnabled = false
+    private var autoHide = true
     private var userPresentSincePlugged = false
     private var lastCharging = false
     private var chargingSessionStart = 0L
@@ -93,10 +95,14 @@ class ChargingService : Service() {
                 Intent.ACTION_POWER_DISCONNECTED -> {
                     DiagnosticLog.add(context, "Runtime event: POWER_DISCONNECTED")
                     userPresentSincePlugged = false
-                    removeOverlay("POWER_DISCONNECTED")
-                    evaluateAnimationState("POWER_DISCONNECTED", false)
-                    DiagnosticLog.add(context, "Runtime watcher stopping after power disconnect")
-                    stopSelf()
+                    if (autoHide) {
+                        removeOverlay("POWER_DISCONNECTED")
+                        DiagnosticLog.add(context, "Runtime watcher stopping after power disconnect")
+                        stopSelf()
+                    } else {
+                        DiagnosticLog.add(context, "Keeping overlay after power disconnect because auto-hide is disabled")
+                        evaluateAnimationState("POWER_DISCONNECTED", false)
+                    }
                 }
                 Intent.ACTION_BATTERY_CHANGED -> evaluateAnimationState("BATTERY_CHANGED", false)
                 Intent.ACTION_SCREEN_ON -> evaluateAnimationState("SCREEN_ON", false)
@@ -161,6 +167,9 @@ class ChargingService : Service() {
         }
         soundJob = serviceScope.launch {
             prefsRepo.soundEnabled.collect { soundEnabled = it }
+        }
+        autoHideJob = serviceScope.launch {
+            prefsRepo.autoHide.collect { autoHide = it }
         }
     }
 
@@ -240,7 +249,8 @@ class ChargingService : Service() {
             userPresentSincePlugged = false
         }
 
-        val shouldShow = enabled && charging && when (animationMode) {
+        val keepAfterUnplug = !charging && !autoHide && overlayView != null
+        val shouldShow = enabled && (charging || keepAfterUnplug) && when (animationMode) {
             AnimationMode.ALWAYS_ON -> true
             AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
         }
@@ -383,6 +393,8 @@ class ChargingService : Service() {
         prefsJob = null
         soundJob?.cancel()
         soundJob = null
+        autoHideJob?.cancel()
+        autoHideJob = null
         runCatching { unregisterReceiver(powerReceiver) }
         com.chargeanim.pro.telemetry.ChargingMetricsProvider.release()
         telemetry.stop()
