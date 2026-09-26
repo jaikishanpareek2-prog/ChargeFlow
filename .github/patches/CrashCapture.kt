@@ -150,9 +150,9 @@ object CrashCapture {
                     output.flush()
                 } ?: error("Unable to open crash report output stream")
                 val done = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
-                resolver.update(uri, done, null, emptyArray())
+                resolver.update(uri, done, null, null)
             } catch (t: Throwable) {
-                resolver.delete(uri, null, null, emptyArray())
+                resolver.delete(uri, null, null, null)
             }
         }
     }
