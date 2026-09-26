@@ -31,6 +31,7 @@ import com.chargeanim.pro.data.AnimationMode
 import com.chargeanim.pro.data.MediaType
 import com.chargeanim.pro.data.PreferencesRepository
 import com.chargeanim.pro.diagnostics.DiagnosticLog
+import com.chargeanim.pro.history.ChargingHistoryStore
 import com.chargeanim.pro.telemetry.BatteryStatusData
 import com.chargeanim.pro.telemetry.ChargingMetrics
 import com.chargeanim.pro.telemetry.ChargingMetricsProvider
@@ -198,6 +199,22 @@ private fun DiagnosticsTab() {
         Text("POWER STATE", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
         MetricsPanel(metrics)
+        Spacer(Modifier.height(16.dp))
+        Text("RECENT CHARGING SESSIONS", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        val sessions = remember { ChargingHistoryStore.all(context).reversed() }
+        if (sessions.isEmpty()) {
+            Text("No completed charging sessions yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.heightIn(max = 220.dp)) {
+                lazyItems(sessions.take(10)) { session ->
+                    val started = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.US).format(java.util.Date(session.startTime))
+                    val ended = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(session.endTime))
+                    val duration = ((session.endTime - session.startTime).coerceAtLeast(0L) / 60000L)
+                    Text("$started → $ended   $duration min   ${session.finalLevel}%", style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).padding(8.dp))
+                }
+            }
+        }
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Event log", style = MaterialTheme.typography.titleMedium)
