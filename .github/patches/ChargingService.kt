@@ -188,10 +188,13 @@ class ChargingService : Service() {
         }
         when (intent?.action) {
             ACTION_UNPLUGGED -> {
-                removeOverlay("ACTION_UNPLUGGED")
-                DiagnosticLog.add(this, "Stopping watcher after active charging session ended")
-                stopSelf(startId)
-                return START_NOT_STICKY
+                evaluateAnimationState("ACTION_UNPLUGGED", false)
+                if (autoHide || overlayView == null) {
+                    DiagnosticLog.add(this, "Stopping watcher after active charging session ended")
+                    stopSelf(startId)
+                    return START_NOT_STICKY
+                }
+                DiagnosticLog.add(this, "Keeping watcher alive after unplug because auto-hide is disabled")
             }
             ACTION_PLUGGED_IN, null -> {
                 evaluateAnimationState("SERVICE_START", false)
