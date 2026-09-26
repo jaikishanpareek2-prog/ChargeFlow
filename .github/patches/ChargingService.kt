@@ -182,8 +182,10 @@ class ChargingService : Service() {
         val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
         val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+        // FULL only counts as charging when external power is still connected.
+        // Otherwise unplugging at 100% can immediately recreate the overlay.
         val charging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
-            status == BatteryManager.BATTERY_STATUS_FULL) && (plugged != 0 || status == BatteryManager.BATTERY_STATUS_FULL)
+            status == BatteryManager.BATTERY_STATUS_FULL) && plugged != 0
         val locked = keyguardManager.isKeyguardLocked
 
         if (charging != lastCharging) {
