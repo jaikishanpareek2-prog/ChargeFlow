@@ -5,6 +5,11 @@ def fix(path: Path) -> None:
     if not path.exists():
         return
     s = path.read_text()
+    import_line = "import androidx.savedstate.setViewTreeSavedStateRegistryOwner\n"
+    if import_line not in s:
+        anchor = "import androidx.savedstate.SavedStateRegistryOwner\n"
+        if anchor in s:
+            s = s.replace(anchor, anchor + import_line, 1)
     old_catch = '''        } catch (e: WindowManager.BadTokenException) {
             Log.e(TAG, "Overlay addView failed: BadTokenException", e)
             DiagnosticLog.add(this, "Overlay addView FAILED: BadTokenException: ${e.message}")
