@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -59,20 +61,34 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
             DiagnosticLog.add(context, "Charging monitor start FAILED: ${it::class.simpleName}: ${it.message}")
         }
     }
-    var tab by remember { mutableStateOf(DashboardTab.THEMES) }
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { DashboardTab.entries.size })
+    val scope = rememberCoroutineScope()
+    val tab = DashboardTab.entries[pagerState.currentPage]
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(20.dp, 20.dp, 20.dp, 8.dp)) {
             Text("ChargeFlow", style = MaterialTheme.typography.headlineMedium)
         }
         TabRow(selectedTabIndex = tab.ordinal) {
-            DashboardTab.entries.forEach { t -> Tab(selected = tab == t, onClick = { tab = t }, text = { Text(t.label) }) }
+            DashboardTab.entries.forEach { t ->
+                Tab(
+                    selected = tab == t,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(t.ordinal) } },
+                    text = { Text(t.label) }
+                )
+            }
         }
-        when (tab) {
-            DashboardTab.THEMES -> ThemesTab(prefs)
-            DashboardTab.VIBES -> VibesTab()
-            DashboardTab.SETTINGS -> SettingsTab(prefs)
-            DashboardTab.PREVIEW -> PreviewTab(prefs, onLaunchOverlay)
-            DashboardTab.DIAGNOSTICS -> DiagnosticsTab()
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 1
+        ) { page ->
+            when (DashboardTab.entries[page]) {
+                DashboardTab.THEMES -> ThemesTab(prefs)
+                DashboardTab.VIBES -> VibesTab()
+                DashboardTab.SETTINGS -> SettingsTab(prefs)
+                DashboardTab.PREVIEW -> PreviewTab(prefs, onLaunchOverlay)
+                DashboardTab.DIAGNOSTICS -> DiagnosticsTab()
+            }
         }
     }
 }
@@ -148,7 +164,7 @@ private fun SettingsTab(prefs: PreferencesRepository) {
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(20.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(20.dp)) {
         SettingSwitch("Show animation when charging", enabled) { scope.launch { prefs.setEnabled(it) } }
         Spacer(Modifier.height(12.dp))
         Text("Animation mode", style = MaterialTheme.typography.titleSmall)
