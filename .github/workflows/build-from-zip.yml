@@ -116,6 +116,7 @@ jobs:
           cp ../.github/patches/ChargingMetrics.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetrics.kt
           cp ../.github/patches/ChargingMetricsProvider.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetricsProvider.kt
           cp ../.github/patches/CrashCapture.kt app/src/main/java/com/chargeanim/pro/CrashCapture.kt
+          cp ../.github/patches/CrashCaptureProvider.kt app/src/main/java/com/chargeanim/pro/diagnostics/CrashCaptureProvider.kt
           cat > app/src/main/java/com/chargeanim/pro/ChargeFlowApplication.kt <<'EOF'
           package com.chargeanim.pro
 
@@ -164,6 +165,15 @@ jobs:
           s = re.sub(r'\s*<receiver[^>]*PowerConnectionReceiver[^>]*>.*?</receiver>', '', s, flags=re.S)
           if '<application' in s and 'android:name=".ChargeFlowApplication"' not in s:
               s = s.replace('<application', '<application android:name=".ChargeFlowApplication"', 1)
+          if 'com.chargeanim.pro.diagnostics.CrashCaptureProvider' not in s:
+              provider = (
+                  '    <provider '
+                  'android:name="com.chargeanim.pro.diagnostics.CrashCaptureProvider" '
+                  'android:authorities="${applicationId}.chargeflow-crash-capture" '
+                  'android:exported="false" '
+                  'android:grantUriPermissions="false" />\\n'
+              )
+              s = s.replace('</application>', provider + '    </application>', 1)
           Path("app/src/main/AndroidManifest.xml").write_text(s)
           PY
       - name: Centralize live charging metrics
