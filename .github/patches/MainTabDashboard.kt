@@ -81,7 +81,6 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
-            beyondViewportPageCount = 0,
             key = { DashboardTab.entries[it].name }
         ) { page ->
             when (DashboardTab.entries[page]) {
