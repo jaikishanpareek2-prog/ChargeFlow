@@ -29,6 +29,9 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.chargeanim.pro.alert.ChargingAlertManager
 import com.chargeanim.pro.history.ChargingHistoryStore
 import com.chargeanim.pro.history.ChargingSession
@@ -295,6 +298,7 @@ class ChargingService : Service() {
         val composeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
                 ChargingOverlayScreen(
@@ -428,9 +432,12 @@ class ChargingService : Service() {
     private data class PrefState(val enabled: Boolean, val mode: AnimationMode, val theme: ThemeId, val normalMedia: MediaSelection, val fastMedia: MediaSelection)
 }
 
-private class OverlayLifecycleOwner : LifecycleOwner, ViewModelStoreOwner {
+private class OverlayLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
+    private val savedStateController = SavedStateRegistryController.create(this)
     override val viewModelStore = ViewModelStore()
     override val lifecycle: Lifecycle get() = lifecycleRegistry
+    override val savedStateRegistry get() = savedStateController.savedStateRegistry
+    init { savedStateController.performAttach() }
     fun handleLifecycleEvent(event: Lifecycle.Event) = lifecycleRegistry.handleLifecycleEvent(event)
 }
