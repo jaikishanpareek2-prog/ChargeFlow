@@ -23,9 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.chargeanim.pro.data.AnimationMode
 import com.chargeanim.pro.data.MediaType
@@ -33,7 +30,7 @@ import com.chargeanim.pro.data.PreferencesRepository
 import com.chargeanim.pro.diagnostics.DiagnosticLog
 import com.chargeanim.pro.telemetry.BatteryStatusData
 import com.chargeanim.pro.telemetry.ChargingMetrics
-import com.chargeanim.pro.telemetry.ChargingMetricsManager
+import com.chargeanim.pro.telemetry.ChargingMetricsProvider
 import com.chargeanim.pro.ui.overlay.ChargingOverlayScreen
 import com.chargeanim.pro.ui.theme.ThemeCatalog
 import com.chargeanim.pro.ui.theme.ThemeId
@@ -180,14 +177,12 @@ private fun SettingsTab(prefs: PreferencesRepository) {
 @Composable
 private fun DiagnosticsTab() {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     var lines by remember { mutableStateOf(DiagnosticLog.readAll(context)) }
-    val metricsManager = remember { ChargingMetricsManager(context.applicationContext) }
-    val metrics by metricsManager.state.collectAsStateWithLifecycle()
+    val metricsState = remember { ChargingMetricsProvider.acquire(context.applicationContext) }
+    val metrics by metricsState.collectAsStateWithLifecycle()
 
-    DisposableEffect(lifecycleOwner) {
-        metricsManager.start()
-        onDispose { metricsManager.stop() }
+    DisposableEffect(Unit) {
+        onDispose { ChargingMetricsProvider.release() }
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
