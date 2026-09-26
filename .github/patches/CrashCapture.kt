@@ -8,7 +8,6 @@ import android.os.Build
 import android.os.Environment
 import android.os.Process
 import android.provider.MediaStore
-import com.chargeanim.pro.diagnostics.DiagnosticLog
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -82,13 +81,6 @@ object CrashCapture {
                     .getString(BREADCRUMBS, "") ?: ""
             }.getOrDefault("")
             appendLine(if (crumbs.isBlank()) "(none)" else crumbs)
-            appendLine()
-            appendLine("Recent DiagnosticLog:")
-            val diagnostics = runCatching {
-                DiagnosticLog.readAll(application).take(100).asReversed()
-            }.getOrDefault(emptyList())
-            if (diagnostics.isEmpty()) appendLine("(unavailable or empty)")
-            else diagnostics.forEach(::appendLine)
         }
 
         // Synchronous local copies first. These are the most important writes.
