@@ -192,7 +192,7 @@ class ChargingService : Service() {
         }
 
         val shouldShow = enabled && charging && when (animationMode) {
-            AnimationMode.ALWAYS_ON -> locked
+            AnimationMode.ALWAYS_ON -> true
             AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
         }
 
