@@ -35,10 +35,14 @@ object CrashCapture {
             if (installed) return
             installed = true
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
-            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            val handler = Thread.UncaughtExceptionHandler { thread, throwable ->
                 capture(application, thread, throwable)
                 runCatching { previousHandler?.uncaughtException(thread, throwable) }
             }
+            // Android may have a thread-specific handler on the main thread.
+            // Install there explicitly as well as process-wide.
+            runCatching { Thread.currentThread().uncaughtExceptionHandler = handler }
+            Thread.setDefaultUncaughtExceptionHandler(handler)
             recordPreviousExit(application)
         }
     }
