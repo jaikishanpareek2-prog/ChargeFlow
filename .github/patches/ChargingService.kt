@@ -33,6 +33,7 @@ import androidx.lifecycle.setViewTreeSavedStateRegistryOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.chargeanim.pro.alert.ChargingAlertManager
 import com.chargeanim.pro.data.AnimationMode
 import com.chargeanim.pro.data.MediaSelection
