@@ -30,6 +30,8 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import com.chargeanim.pro.alert.ChargingAlertManager
+import com.chargeanim.pro.history.ChargingHistoryStore
+import com.chargeanim.pro.history.ChargingSession
 import com.chargeanim.pro.data.AnimationMode
 import com.chargeanim.pro.data.MediaSelection
 import com.chargeanim.pro.data.MediaType
@@ -73,6 +75,7 @@ class ChargingService : Service() {
     private var enabled = true
     private var userPresentSincePlugged = false
     private var lastCharging = false
+    private var chargingSessionStart = 0L
     private val statusState = mutableStateOf(BatteryStatusData())
     private val themeState = mutableStateOf(ThemeId.FUTURISTIC)
     private val mediaState = mutableStateOf(MediaSelection(null, MediaType.NONE))
@@ -213,6 +216,21 @@ class ChargingService : Service() {
         val locked = keyguardManager.isKeyguardLocked
 
         if (charging != lastCharging) {
+            if (charging) {
+                chargingSessionStart = System.currentTimeMillis()
+                DiagnosticLog.add(this, "Charging session started")
+            } else if (chargingSessionStart > 0L) {
+                ChargingHistoryStore.add(
+                    this,
+                    ChargingSession(
+                        startTime = chargingSessionStart,
+                        endTime = System.currentTimeMillis(),
+                        finalLevel = battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, statusState.value.percent) ?: statusState.value.percent
+                    )
+                )
+                DiagnosticLog.add(this, "Charging session recorded")
+                chargingSessionStart = 0L
+            }
             lastCharging = charging
             userPresentSincePlugged = false
         }
