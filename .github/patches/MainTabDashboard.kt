@@ -181,6 +181,12 @@ private fun SettingsTab(prefs: PreferencesRepository) {
 private fun DiagnosticsTab() {
     val context = LocalContext.current
     var lines by remember { mutableStateOf(DiagnosticLog.readAll(context)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(2000L)
+            lines = DiagnosticLog.readAll(context)
+        }
+    }
     val metricsState = remember { ChargingMetricsProvider.acquire(context.applicationContext) }
     val metrics by metricsState.collectAsStateWithLifecycle()
 
