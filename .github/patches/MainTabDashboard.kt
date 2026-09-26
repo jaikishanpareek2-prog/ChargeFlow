@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -48,6 +49,7 @@ private enum class DashboardTab(val label: String) {
     THEMES("Skins"), VIBES("Vibes"), SETTINGS("Config"), PREVIEW("Monitor"), DIAGNOSTICS("Telemetry")
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) {
     val context = LocalContext.current
