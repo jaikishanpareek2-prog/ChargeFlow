@@ -115,6 +115,19 @@ jobs:
           cp ../.github/patches/MainTabDashboard.kt app/src/main/java/com/chargeanim/pro/ui/main/MainTabDashboard.kt
           cp ../.github/patches/ChargingMetrics.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetrics.kt
           cp ../.github/patches/ChargingMetricsProvider.kt app/src/main/java/com/chargeanim/pro/telemetry/ChargingMetricsProvider.kt
+          cp ../.github/patches/CrashCapture.kt app/src/main/java/com/chargeanim/pro/CrashCapture.kt
+          cat > app/src/main/java/com/chargeanim/pro/ChargeFlowApplication.kt <<'EOF'
+          package com.chargeanim.pro
+
+          import android.app.Application
+
+          class ChargeFlowApplication : Application() {
+              override fun onCreate() {
+                  super.onCreate()
+                  CrashCapture.install(this)
+              }
+          }
+          EOF
           python3 ../.github/scripts/patch_charging_service.py
           python3 <<'PY'
           from pathlib import Path
@@ -149,6 +162,8 @@ jobs:
               s = s.replace('</application>', receiver + '    </application>')
           import re
           s = re.sub(r'\s*<receiver[^>]*PowerConnectionReceiver[^>]*>.*?</receiver>', '', s, flags=re.S)
+          if '<application' in s and 'android:name=".ChargeFlowApplication"' not in s:
+              s = s.replace('<application', '<application android:name=".ChargeFlowApplication"', 1)
           Path("app/src/main/AndroidManifest.xml").write_text(s)
           PY
       - name: Centralize live charging metrics
