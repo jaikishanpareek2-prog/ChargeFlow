@@ -171,7 +171,7 @@ class ChargingService : Service() {
             Log.e(TAG, "startForeground failed", e)
             DiagnosticLog.add(this, "startForeground FAILED: ${e::class.simpleName}: ${e.message}")
             stopSelf(startId)
-            return START_NOT_STICKY
+            return START_STICKY
         }
         when (intent?.action) {
             ACTION_UNPLUGGED -> {
