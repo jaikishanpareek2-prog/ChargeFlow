@@ -8,12 +8,24 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,8 +52,8 @@ import com.chargeanim.pro.ui.theme.ThemeId
 import com.chargeanim.pro.ui.theme.ThemeVisual
 import kotlinx.coroutines.launch
 
-private enum class DashboardTab(val label: String) {
-    THEMES("Skins"), VIBES("Vibes"), SETTINGS("Config"), PREVIEW("Monitor"), DIAGNOSTICS("Telemetry")
+private enum class DashboardTab(val label: String, val icon: @Composable () -> Unit) {
+    THEMES("Skins", { Icon(Icons.Default.Palette, null) }), VIBES("Vibes", { Icon(Icons.Default.Waves, null) }), SETTINGS("Config", { Icon(Icons.Default.Settings, null) }), PREVIEW("Monitor", { Icon(Icons.Default.PlayArrow, null) }), DIAGNOSTICS("Telemetry", { Icon(Icons.Default.GraphicEq, null) })
 }
 
 @Composable
@@ -61,10 +73,10 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
     var tab by remember { mutableStateOf(DashboardTab.THEMES) }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(20.dp, 20.dp, 20.dp, 8.dp)) {
-            Text("ChargeFlow", style = MaterialTheme.typography.headlineMedium)
+            Text("ChargeFlow", style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
-        TabRow(selectedTabIndex = tab.ordinal) {
-            DashboardTab.entries.forEach { t -> Tab(selected = tab == t, onClick = { tab = t }, text = { Text(t.label) }) }
+        ScrollableTabRow(selectedTabIndex = tab.ordinal, edgePadding = 12.dp) {
+            DashboardTab.entries.forEach { t -> Tab(selected = tab == t, onClick = { tab = t }, icon = t.icon, text = { Text(t.label, maxLines = 1) }) }
         }
         when (tab) {
             DashboardTab.THEMES -> ThemesTab(prefs)
@@ -90,13 +102,34 @@ private fun ThemesTab(prefs: PreferencesRepository) {
 @Composable
 private fun ThemeCard(themeId: ThemeId, isSelected: Boolean, onClick: () -> Unit) {
     val style = ThemeCatalog.getValue(themeId)
-    Column(Modifier.clip(RoundedCornerShape(16.dp)).background(Color(0xFF0A0E1A)).then(if (isSelected) Modifier.background(style.accentPrimary.copy(alpha = 0.08f)) else Modifier).clickable(onClick = onClick).padding(10.dp)) {
-        Box(Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(10.dp))) {
-            ThemeVisual(themeId = themeId, modifier = Modifier.fillMaxSize()) { Text("72%", color = Color(0xFFEAF4FF)) }
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) style.accentPrimary.copy(alpha = 0.13f)
+            else MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, style.accentPrimary.copy(alpha = .65f)) else null
+    ) {
+        Column(Modifier.padding(10.dp)) {
+            Box(Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFF05070C))) {
+                ThemeVisual(themeId = themeId, modifier = Modifier.fillMaxSize()) {
+                    Text("72%", color = Color(0xFFEAF4FF), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+                if (isSelected) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        color = style.accentPrimary
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = Color.Black, modifier = Modifier.padding(5.dp).size(18.dp))
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(themeId.label, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, maxLines = 1)
+            Text(if (isSelected) "Active skin" else "Tap to apply", style = MaterialTheme.typography.labelSmall, color = if (isSelected) style.accentPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Spacer(Modifier.height(8.dp))
-        Text(themeId.label, color = Color(0xFFEAF4FF), style = MaterialTheme.typography.bodyMedium)
-        if (isSelected) Text("Selected", color = style.accentPrimary, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -113,7 +146,9 @@ private fun SettingsTab(prefs: PreferencesRepository) {
     val overlayGranted = remember { mutableStateOf(Settings.canDrawOverlays(context)) }
 
     DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) overlayGranted.value = Settings.canDrawOverlays(context) }
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) overlayGranted.value = Settings.canDrawOverlays(context)
+        }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
@@ -131,48 +166,35 @@ private fun SettingsTab(prefs: PreferencesRepository) {
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(20.dp)) {
-        SettingSwitch("Show animation when charging", enabled) { scope.launch { prefs.setEnabled(it) } }
-        Spacer(Modifier.height(12.dp))
-        Text("Animation mode", style = MaterialTheme.typography.titleSmall)
-        Text(
-            if (animationMode == AnimationMode.TEMPORARY)
-                "Shows on charge and while the lock screen is active; hides after unlock."
-            else
-                "Stays visible continuously while charging and locked; hides after unlock.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Row(
-            Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilterChip(
-                selected = animationMode == AnimationMode.TEMPORARY,
-                onClick = { scope.launch { prefs.setAnimationMode(AnimationMode.TEMPORARY) } },
-                label = { Text("Temporary") }
-            )
-            FilterChip(
-                selected = animationMode == AnimationMode.ALWAYS_ON,
-                onClick = { scope.launch { prefs.setAnimationMode(AnimationMode.ALWAYS_ON) } },
-                label = { Text("Always On") }
-            )
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Charging experience", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                Text("Control how ChargeFlow behaves while connected.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SettingSwitch(Icons.Default.Bolt, "Show animation when charging", "Enable the charging experience", enabled) { scope.launch { prefs.setEnabled(it) } }
+                Text("Animation mode", style = MaterialTheme.typography.titleSmall)
+                Text(if (animationMode == AnimationMode.TEMPORARY) "Shows on charge and while the lock screen is active; hides after unlock." else "Stays visible continuously while charging; hides after disconnect.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = animationMode == AnimationMode.TEMPORARY, onClick = { scope.launch { prefs.setAnimationMode(AnimationMode.TEMPORARY) } }, label = { Text("Temporary") })
+                    FilterChip(selected = animationMode == AnimationMode.ALWAYS_ON, onClick = { scope.launch { prefs.setAnimationMode(AnimationMode.ALWAYS_ON) } }, label = { Text("Always On") })
+                }
+                Text("System overlay", style = MaterialTheme.typography.titleSmall)
+                Text(if (overlayGranted.value) "Enabled: ChargeFlow can appear automatically when charging." else "Required for automatic charging animation.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = { context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + context.packageName))) }) { Text(if (overlayGranted.value) "Open overlay permission" else "Enable system overlay") }
+                SettingSwitch(Icons.Default.Waves, "AMOLED black background", "Use a deeper black background", amoled) { scope.launch { prefs.setAmoledMode(it) } }
+                SettingSwitch(Icons.Default.GraphicEq, "Hide automatically when unplugged", "Dismiss the overlay after disconnect", autoHide) { scope.launch { prefs.setAutoHide(it) } }
+                SettingSwitch(Icons.Default.VolumeUp, "Charging start sound", "Play the selected sound", soundEnabled) { scope.launch { prefs.setSoundEnabled(it) } }
+            }
         }
-        Spacer(Modifier.height(12.dp))
-        Text("System overlay", style = MaterialTheme.typography.titleSmall)
-        Text(if (overlayGranted.value) "Enabled: ChargeFlow can appear automatically when charging." else "Required for the charging animation to appear automatically over the system.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = { context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + context.packageName))) }) {
-            Text(if (overlayGranted.value) "Open overlay permission" else "Enable system overlay")
-        }
-        SettingSwitch("AMOLED black background", amoled) { scope.launch { prefs.setAmoledMode(it) } }
-        SettingSwitch("Hide automatically when unplugged", autoHide) { scope.launch { prefs.setAutoHide(it) } }
-        SettingSwitch("Play a sound when charging starts", soundEnabled) { scope.launch { prefs.setSoundEnabled(it) } }
-        Spacer(Modifier.height(20.dp))
-        Text("Custom media (overrides the theme visual)", style = MaterialTheme.typography.titleSmall)
-        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = { normalMediaPicker.launch("*/*") }) { Text("Normal charging…") }
-            OutlinedButton(onClick = { fastMediaPicker.launch("*/*") }) { Text("Fast charging…") }
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Custom media", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                Text("Optional media can replace the theme visual.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilledTonalButton(onClick = { normalMediaPicker.launch("*/*") }) { Text("Normal charging") }
+                    OutlinedButton(onClick = { fastMediaPicker.launch("*/*") }) { Text("Fast charging") }
+                }
+            }
         }
     }
 }
@@ -236,23 +258,50 @@ private fun MetricsPanel(metrics: ChargingMetrics) {
 @Composable
 private fun PreviewTab(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) {
     val theme by prefs.theme.collectAsStateWithLifecycle(initialValue = ThemeId.FUTURISTIC)
+    val style = ThemeCatalog.getValue(theme)
     val fakeStatus = remember { BatteryStatusData(percent = 72, isCharging = true, isFastCharging = true, chargeMode = com.chargeanim.pro.telemetry.ChargeMode.USB, voltage = 5.02f, currentMa = 3670, wattage = 18.4f, temperatureC = 32f, elapsedChargingMs = 11 * 60_000L, sessionStartPercent = 60) }
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.padding(24.dp).aspectRatio(0.5f).clip(RoundedCornerShape(28.dp)).background(Color.Black)) {
-            ChargingOverlayScreen(status = fakeStatus, theme = theme, media = com.chargeanim.pro.data.MediaSelection(null, MediaType.NONE))
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Live preview", style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        Text(theme.label, style = MaterialTheme.typography.bodyMedium, color = style.accentPrimary)
+                    }
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = style.accentPrimary)
+                }
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.fillMaxWidth().aspectRatio(0.58f).clip(RoundedCornerShape(24.dp)).background(Color.Black)) {
+                    ChargingOverlayScreen(status = fakeStatus, theme = theme, media = com.chargeanim.pro.data.MediaSelection(null, MediaType.NONE))
+                }
+            }
         }
-        Text("Preview with sample data — tap Settings to enable the system overlay before charging.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 24.dp))
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onLaunchOverlay) { Text("Open full-screen now") }
+        Text("Preview uses sample charging data. Real battery telemetry is used by the charging overlay.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Button(onClick = onLaunchOverlay, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.PlayArrow, null)
+            Spacer(Modifier.width(8.dp))
+            Text("Open full-screen")
+        }
     }
 }
 
 @Composable
-private fun SettingSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(label)
-        Switch(checked = checked, onCheckedChange = onChange)
-    }
+private fun SettingSwitch(
+    icon: @Composable () -> Unit,
+    label: String,
+    description: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    ListItem(
+        leadingContent = {
+            Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) { icon() }
+        },
+        headlineContent = { Text(label, style = MaterialTheme.typography.bodyLarge) },
+        supportingContent = { Text(description, maxLines = 2) },
+        trailingContent = { Switch(checked = checked, onCheckedChange = onChange) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+    )
 }
 
 private fun guessType(context: android.content.Context, uri: android.net.Uri): MediaType {
