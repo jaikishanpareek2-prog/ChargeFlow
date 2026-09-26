@@ -46,6 +46,7 @@ class ChargingMetricsManager(private val context: Context) {
     private var lastPercent = -1
     private var lastSampleTime = 0L
     private var rateEma = 0.0
+    private var wasCharging = false
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -92,20 +93,27 @@ class ChargingMetricsManager(private val context: Context) {
         val currentAmps = (currentMicroAmps / 1_000_000.0).coerceAtLeast(0.0)
         val power = (voltage * currentAmps).coerceAtLeast(0.0)
 
-        if (charging && sessionStart == 0L) sessionStart = now
-        if (!charging) sessionStart = 0L
+        if (charging && !wasCharging) {
+            // Start each charging session with a clean rate sample.
+            sessionStart = now
+            lastPercent = percent
+            lastSampleTime = now
+            rateEma = 0.0
+        } else if (!charging) {
+            sessionStart = 0L
+            rateEma = 0.0
+        }
 
-        if (charging && lastPercent >= 0 && lastSampleTime > 0L && percent > lastPercent) {
+        if (charging && wasCharging && lastPercent >= 0 && lastSampleTime > 0L && percent > lastPercent) {
             val hours = (now - lastSampleTime).toDouble() / 3_600_000.0
             if (hours > 0.0) {
                 val instantRate = (percent - lastPercent) / hours
                 rateEma = if (rateEma == 0.0) instantRate else rateEma * 0.75 + instantRate * 0.25
             }
-        } else if (!charging) {
-            rateEma *= 0.9
         }
         lastPercent = percent
         lastSampleTime = now
+        wasCharging = charging
 
         val remaining = if (charging && !full && rateEma > 0.05) {
             max(1, ((100 - percent) / rateEma * 60.0).roundToInt())
