@@ -17,8 +17,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -31,10 +33,15 @@ import com.chargeanim.pro.telemetry.BatteryStatusData
 import com.chargeanim.pro.ui.theme.ThemeCatalog
 import com.chargeanim.pro.ui.theme.ThemeId
 import com.chargeanim.pro.ui.theme.ThemeVisual
+import com.chargeanim.pro.ui.theme.VibeVisual
+import com.chargeanim.pro.ui.theme.ThemeType
+import com.chargeanim.pro.ui.theme.VibesThemeManager
 
 @Composable
 fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: MediaSelection, showTelemetry: Boolean = true) {
-    val accent = ThemeCatalog.getValue(theme).accentPrimary
+    val context = LocalContext.current
+    val vibe = remember { VibesThemeManager.getSelectedTheme(context) }
+    val accent = if (vibe != ThemeType.NONE) VibesThemeManager.accent(vibe) else ThemeCatalog.getValue(theme).accentPrimary
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Row(Modifier.align(Alignment.TopCenter).padding(top = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Filled.Bolt, null, tint = accent, modifier = Modifier.size(16.dp))
@@ -47,11 +54,21 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
             }
         }
         Box(Modifier.align(Alignment.Center).size(260.dp), contentAlignment = Alignment.Center) {
-            if (media.uri != null) MediaRenderer(media, Modifier.fillMaxSize()) {}
-            else ThemeVisual(theme, Modifier.fillMaxSize()) {
+            if (media.uri != null) {
+                MediaRenderer(media, Modifier.fillMaxSize()) {}
+            } else if (vibe != ThemeType.NONE) {
+                VibeVisual(vibe, Modifier.fillMaxSize())
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("${status.percent}%", fontSize = 44.sp, color = Color(0xFFEAF4FF))
                     Text(speedLabel(status), fontSize = 14.sp, color = accent)
+                }
+            } else {
+                ThemeVisual(theme, Modifier.fillMaxSize()) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("${status.percent}%", fontSize = 44.sp, color = Color(0xFFEAF4FF))
+                        Text(speedLabel(status), fontSize = 14.sp, color = accent)
+                    }
                 }
             }
         }
