@@ -1,6 +1,7 @@
 package com.chargeanim.pro.ui.overlay
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
