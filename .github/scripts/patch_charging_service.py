@@ -30,7 +30,7 @@ def fix(path: Path) -> None:
     if old_catch in s:
         s = s.replace(old_catch, new_catch, 1)
     old_mode = '''        val shouldShow = enabled && charging && when (animationMode) {
-            AnimationMode.ALWAYS_ON -> locked
+            AnimationMode.ALWAYS_ON -> true
             AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
         }'''
     new_mode = '''        val shouldShow = enabled && charging && when (animationMode) {
