@@ -190,7 +190,7 @@ class ChargingService : Service() {
                 }
             }
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun isCurrentlyCharging(): Boolean {
