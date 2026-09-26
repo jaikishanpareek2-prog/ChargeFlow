@@ -19,6 +19,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.core.content.ContextCompat
+import com.chargeanim.pro.service.ChargingService
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.chargeanim.pro.data.PreferencesRepository
@@ -158,8 +164,42 @@ private fun ConfigTab(prefs: PreferencesRepository) {
     val autoHide by prefs.autoHide.collectAsStateWithLifecycle(true)
     val sound by prefs.soundEnabled.collectAsStateWithLifecycle(false)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Animation", style = MaterialTheme.typography.titleMedium)
+        ElevatedCard(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Charging overlay", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (Settings.canDrawOverlays(context))
+                        "Overlay access is enabled. ChargeFlow can display the full screen charging experience."
+                    else
+                        "Allow display over other apps so ChargeFlow can show the charging animation while the device is locked.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Button(onClick = {
+                    if (Settings.canDrawOverlays(context)) {
+                        ContextCompat.startForegroundService(
+                            context,
+                            Intent(context, ChargingService::class.java).setAction(ChargingService.ACTION_MONITOR)
+                        )
+                    } else {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }
+                }) {
+                    Text(if (Settings.canDrawOverlays(context)) "Start charging monitor" else "Grant overlay access")
+                }
+            }
+        }
         ElevatedCard(shape = RoundedCornerShape(20.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Mode", style = MaterialTheme.typography.labelLarge)
