@@ -152,7 +152,7 @@ object CrashCapture {
                 val done = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
                 resolver.update(uri, done, null, null)
             } catch (t: Throwable) {
-                resolver.delete(uri, null, null, null)
+                resolver.delete(uri, null, emptyArray<String>())
             }
         }
     }
