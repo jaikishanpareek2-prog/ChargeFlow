@@ -182,10 +182,12 @@ private fun SettingsTab(prefs: PreferencesRepository) {
 private fun DiagnosticsTab() {
     val context = LocalContext.current
     var lines by remember { mutableStateOf(DiagnosticLog.readAll(context)) }
+    var sessions by remember { mutableStateOf(ChargingHistoryStore.all(context).reversed()) }
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(2000L)
             lines = DiagnosticLog.readAll(context)
+            sessions = ChargingHistoryStore.all(context).reversed()
         }
     }
     val metricsState = remember { ChargingMetricsProvider.acquire(context.applicationContext) }
@@ -202,7 +204,6 @@ private fun DiagnosticsTab() {
         Spacer(Modifier.height(16.dp))
         Text("RECENT CHARGING SESSIONS", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
-        val sessions = remember { ChargingHistoryStore.all(context).reversed() }
         if (sessions.isEmpty()) {
             Text("No completed charging sessions yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
