@@ -61,8 +61,7 @@ class ChargingService : Service() {
         private const val CHANNEL_ID = "charging_service_channel"
         private const val NOTIFICATION_ID = 1001
         private const val TAG = "ChargeFlowService"
-        private const val CHARGING_ANIMATION_DURATION_MS = 18_000L
-    }
+            }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var telemetry: BatteryTelemetryManager
@@ -79,8 +78,7 @@ class ChargingService : Service() {
     private var autoHideJob: Job? = null
     private var chargingAnimationJob: Job? = null
     private var foregroundStarted = false
-    private var animationShownThisSession = false
-    private var animationMode = AnimationMode.TEMPORARY
+        private var animationMode = AnimationMode.TEMPORARY
     private var enabled = true
     private var soundEnabled = false
     private var autoHide = true
@@ -104,7 +102,6 @@ class ChargingService : Service() {
                     userPresentSincePlugged = false
                     chargingAnimationJob?.cancel()
                     chargingAnimationJob = null
-                    animationShownThisSession = false
                     removeOverlay("POWER_DISCONNECTED")
                     DiagnosticLog.add(context, "Charging session ended; watcher remains alive for next connection")
                 }
@@ -136,7 +133,7 @@ class ChargingService : Service() {
                         "${String.format(java.util.Locale.US, "%.2fA", metrics.currentAmps)} " +
                         "${String.format(java.util.Locale.US, "%.2fW", metrics.powerWatts)} " +
                         "${String.format(java.util.Locale.US, "%.1fC", metrics.temperatureCelsius)} " +
-                        "profile=${metrics.chargingProfile} ttf=${metrics.timeToFullMinutes ?: -1}m"
+                        "profile=${metrics.chargingProfile} ttf=${metrics.timeToFullMinutes?.let { "${it}m" } ?: "—"}"
                 )
             }
         }
@@ -246,29 +243,21 @@ class ChargingService : Service() {
             return
         }
 
+        // The watcher remains alive for the whole charging session. Visibility is
+        // derived from charging + lock/user state; it is never time-limited.
         val shouldShow = enabled && when (animationMode) {
-            AnimationMode.ALWAYS_ON -> true
-            AnimationMode.TEMPORARY -> !animationShownThisSession
+            AnimationMode.ALWAYS_ON -> locked
+            AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
         }
 
-        DiagnosticLog.add(this, "Evaluate: reason=$reason charging=$charging locked=$locked enabled=$enabled mode=$animationMode sessionShown=$animationShownThisSession show=$shouldShow")
+        DiagnosticLog.add(
+            this,
+            "Evaluate: reason=$reason charging=$charging locked=$locked enabled=$enabled " +
+                "mode=$animationMode userPresent=$userPresentSincePlugged show=$shouldShow"
+        )
 
-        if (shouldShow) {
-            animationShownThisSession = true
-            showOverlayIfAllowed(haptic)
-            if (animationMode == AnimationMode.TEMPORARY) {
-                chargingAnimationJob?.cancel()
-                chargingAnimationJob = serviceScope.launch {
-                    kotlinx.coroutines.delay(CHARGING_ANIMATION_DURATION_MS)
-                    if (isCurrentlyCharging()) {
-                        removeOverlay("TEMPORARY_TIMEOUT")
-                        DiagnosticLog.add(this@ChargingService, "Temporary charging animation timed out after 18 seconds")
-                    }
-                }
-            }
-        } else if (animationMode == AnimationMode.ALWAYS_ON) {
-            showOverlayIfAllowed(false)
-        }
+        if (shouldShow) showOverlayIfAllowed(haptic)
+        else removeOverlay(reason)
     }
 
     private fun showOverlayIfAllowed(haptic: Boolean = false) {
@@ -318,8 +307,6 @@ class ChargingService : Service() {
         val flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
