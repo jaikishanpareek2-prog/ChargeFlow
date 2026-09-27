@@ -17,7 +17,6 @@ class ChargingReceiver : BroadcastReceiver() {
             Intent.ACTION_POWER_DISCONNECTED ->
                 startWatcher(context, ChargingService.ACTION_UNPLUGGED)
             Intent.ACTION_BOOT_COMPLETED,
-            Intent.ACTION_LOCKED_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_USER_PRESENT ->
                 startWatcher(context, ChargingService.ACTION_MONITOR)
