@@ -51,7 +51,7 @@ import com.chargeflow.theme.ThemeId as FlagshipThemeId
 import kotlinx.coroutines.launch
 
 private enum class DashboardTab(val label: String) {
-    THEMES("Skins"), VIBES("Vibes"), SETTINGS("Config"), PREVIEW("Monitor"), DIAGNOSTICS("Telemetry")
+    THEMES("Themes"), VIBES("Vibes"), SETTINGS("Settings"), PREVIEW("Monitor"), DIAGNOSTICS("Telemetry")
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -76,10 +76,17 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
-            Text("ChargeFlow", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
-            Text("Charging, redesigned.", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("ChargeFlow", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Charging, redesigned.", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                }
+                Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), shape = RoundedCornerShape(50.dp), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))) {
+                    Text("FLAGSHIP", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                }
+            }
             Text(
-                "Flagship charging visuals and live telemetry.",
+                "Distinct charging visuals, live telemetry, and a clean AMOLED control surface.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
@@ -156,11 +163,12 @@ private fun ThemeCard(themeId: ThemeId, isSelected: Boolean, onClick: () -> Unit
                 FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = false, animated = false)
             }
             Spacer(Modifier.height(10.dp))
-            Text(
-                themeId.label,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(themeId.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.weight(1f))
+                if (isSelected) Surface(color = style.accentPrimary.copy(alpha = 0.14f), shape = RoundedCornerShape(50.dp)) {
+                    Text("ON", style = MaterialTheme.typography.labelSmall, color = style.accentPrimary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                }
+            }
             Text(
                 if (isSelected) "ACTIVE EXPERIENCE" else "Select to experience",
                 style = MaterialTheme.typography.labelSmall,
