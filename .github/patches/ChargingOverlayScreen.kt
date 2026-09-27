@@ -117,8 +117,8 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
 }
 @Composable private fun MetricCell(label: String, value: String?) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value ?: "—", style = CyberpunkTypography.labelLarge, color = CyberpunkColors.OnSurface)
-        Text(label, style = CyberpunkTypography.labelSmall)
+        Text(value ?: "—", fontSize = 14.sp, color = Color(0xFFEAF4FF))
+        Text(label, fontSize = 10.sp, color = Color(0xFF8B9AB0))
     }
 }
 @Composable private fun StatusBanner(status: BatteryStatusData) {
