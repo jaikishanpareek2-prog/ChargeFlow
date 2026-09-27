@@ -92,14 +92,27 @@ fun VibeVisual(type: ThemeType, modifier: Modifier) {
         infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Reverse),
         label = "pulse"
     )
+    val drift by transition.animateFloat(
+        0f, 1f,
+        infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Restart),
+        label = "drift"
+    )
     val accent = VibesThemeManager.accent(type)
 
     Canvas(modifier.background(VibesThemeManager.background(type))) {
         if (type == ThemeType.NONE) return@Canvas
         val center = Offset(size.width / 2f, size.height / 2f)
         val r = size.minDimension * 0.28f
-        drawCircle(accent.copy(alpha = 0.12f * pulse), r * 1.9f, center)
-        drawCircle(accent.copy(alpha = 0.28f * pulse), r, center, style = androidx.compose.ui.graphics.drawscope.Stroke(3f))
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(accent.copy(alpha = 0.24f * pulse), accent.copy(alpha = 0.04f), Color.Transparent),
+                center = center,
+                radius = r * 2.15f
+            ),
+            radius = r * 2.15f,
+            center = center
+        )
+        drawCircle(accent.copy(alpha = 0.32f * pulse), r, center, style = androidx.compose.ui.graphics.drawscope.Stroke(3f))
 
         when (type) {
             ThemeType.MIDNIGHT_GARDEN -> repeat(10) { i ->
