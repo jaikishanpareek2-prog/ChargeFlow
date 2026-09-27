@@ -362,14 +362,14 @@ private fun PreviewTab(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit
     val liveStatus = remember(metrics) {
         BatteryStatusData(
             percent = metrics.batteryPercent,
-            isCharging = metrics.isCharging,
-            isFastCharging = metrics.chargingProfile == com.chargeanim.pro.telemetry.ChargingProfile.TURBO,
-            chargeMode = com.chargeanim.pro.telemetry.ChargeMode.USB,
+            isCharging = metrics.hasPowerFlow,
+            isFastCharging = metrics.hasPowerFlow && metrics.chargingProfile == com.chargeanim.pro.telemetry.ChargingProfile.TURBO,
+            chargeMode = if (metrics.hasPowerFlow) com.chargeanim.pro.telemetry.ChargeMode.USB else com.chargeanim.pro.telemetry.ChargeMode.NONE,
             voltage = metrics.voltageVolts.toFloat().takeIf { it > 0f },
-            currentMa = (metrics.currentAmps * 1000f).takeIf { it > 0.001f },
-            wattage = metrics.powerWatts.toFloat().takeIf { it > 0.05f },
+            currentMa = if (metrics.hasPowerFlow) (metrics.currentAmps * 1000.0).toInt().takeIf { it > 0 } else null,
+            wattage = if (metrics.hasPowerFlow) metrics.powerWatts.toFloat() else null,
             temperatureC = metrics.temperatureCelsius.toFloat().takeIf { it > 0f },
-            elapsedChargingMs = metrics.sessionSeconds * 1000L,
+            elapsedChargingMs = if (metrics.hasPowerFlow) metrics.sessionSeconds * 1000L else 0L,
             sessionStartPercent = null
         )
     }
