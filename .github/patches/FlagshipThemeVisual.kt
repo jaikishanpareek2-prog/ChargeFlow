@@ -49,7 +49,15 @@ fun FlagshipThemeVisual(
             drawRect(theme.background)
             drawCircle(Brush.radialGradient(listOf(theme.primary.copy(alpha = 0.28f * glow), theme.secondary.copy(alpha = 0.08f * glow), Color.Transparent), center, radius * 1.15f), radius * 1.15f, center)
 
-            particles.forEach { p ->
+            val particleEngine = theme.id in setOf(
+                ThemeId.SPACE, ThemeId.FIRE, ThemeId.NATURE, ThemeId.ANIME,
+                ThemeId.MIDNIGHT_GARDEN, ThemeId.CELESTIAL_SPARKLE, ThemeId.ENCHANTED_FOREST
+            ) || theme.hasMatrix
+            val ringEngine = theme.id in setOf(
+                ThemeId.FUTURISTIC, ThemeId.ICE, ThemeId.NEON, ThemeId.MINIMAL
+            ) || theme.hasLightning
+
+            if (particleEngine) particles.forEach { p ->
                 val t = (phase * theme.particleSpeed.start + p.phase) % 1f
                 val x = if (theme.hasMatrix) p.x * size.width else (p.x + sin((t + p.y) * 6.283f) * 0.04f) * size.width
                 val baseY = if (theme.upwardBias) 1f - t else t
@@ -71,7 +79,7 @@ fun FlagshipThemeVisual(
                     }
                     drawPath(path, theme.ringColors[band % theme.ringColors.size].copy(alpha = 0.72f), style = Stroke(width = theme.ringStroke))
                 }
-            } else {
+            } else if (ringEngine) {
                 val rotation = phase * 360f
                 val segments = theme.ringSegments.coerceIn(8, 96)
                 for (ring in 0..1) {
