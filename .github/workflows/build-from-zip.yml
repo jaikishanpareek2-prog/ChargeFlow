@@ -37,31 +37,13 @@ jobs:
       - name: Merge ChargeFlow Vibes theme catalog
         working-directory: ChargeAnimPro
         run: python3 ../.github/scripts/patch_vibes_themes.py
-      - name: Install flagship fonts
+      - name: Prepare flagship typography
         working-directory: ChargeAnimPro
         run: |
           set -e
-          mkdir -p app/src/main/res/font /tmp/chargeflow-fonts
-          curl -fL --retry 3 -o /tmp/chargeflow-fonts/orbitron.zip "https://fonts.google.com/download?family=Orbitron"
-          curl -fL --retry 3 -o /tmp/chargeflow-fonts/exo2.zip "https://fonts.google.com/download?family=Exo%202"
-          curl -fL --retry 3 -o /tmp/chargeflow-fonts/rajdhani.zip "https://fonts.google.com/download?family=Rajdhani"
-          curl -fL --retry 3 -o /tmp/chargeflow-fonts/sharetechmono.zip "https://fonts.google.com/download?family=Share%20Tech%20Mono"
-          mkdir -p /tmp/chargeflow-fonts/orbitron /tmp/chargeflow-fonts/exo2 /tmp/chargeflow-fonts/rajdhani /tmp/chargeflow-fonts/sharetechmono
-          unzip -q /tmp/chargeflow-fonts/orbitron.zip -d /tmp/chargeflow-fonts/orbitron
-          unzip -q /tmp/chargeflow-fonts/exo2.zip -d /tmp/chargeflow-fonts/exo2
-          unzip -q /tmp/chargeflow-fonts/rajdhani.zip -d /tmp/chargeflow-fonts/rajdhani
-          unzip -q /tmp/chargeflow-fonts/sharetechmono.zip -d /tmp/chargeflow-fonts/sharetechmono
-          find /tmp/chargeflow-fonts -type f -name '*.ttf' -print
-          cp "$(find /tmp/chargeflow-fonts/orbitron -type f -name 'Orbitron-Regular.ttf' | head -1)" app/src/main/res/font/orbitron_regular.ttf
-          cp "$(find /tmp/chargeflow-fonts/orbitron -type f -name 'Orbitron-Bold.ttf' | head -1)" app/src/main/res/font/orbitron_bold.ttf
-          cp "$(find /tmp/chargeflow-fonts/exo2 -type f -name 'Exo2-Regular.ttf' | head -1)" app/src/main/res/font/exo2_regular.ttf
-          cp "$(find /tmp/chargeflow-fonts/exo2 -type f -name 'Exo2-Medium.ttf' | head -1)" app/src/main/res/font/exo2_medium.ttf
-          cp "$(find /tmp/chargeflow-fonts/rajdhani -type f -name 'Rajdhani-Regular.ttf' | head -1)" app/src/main/res/font/rajdhani_regular.ttf
-          cp "$(find /tmp/chargeflow-fonts/rajdhani -type f -name 'Rajdhani-Medium.ttf' | head -1)" app/src/main/res/font/rajdhani_medium.ttf
-          cp "$(find /tmp/chargeflow-fonts/sharetechmono -type f -name 'ShareTechMono-Regular.ttf' | head -1)" app/src/main/res/font/share_tech_mono.ttf
-          for font in orbitron_regular.ttf orbitron_bold.ttf exo2_regular.ttf exo2_medium.ttf rajdhani_regular.ttf rajdhani_medium.ttf share_tech_mono.ttf; do
-            test -s "app/src/main/res/font/$font"
-          done
+          mkdir -p app/src/main/res/font
+          rm -f app/src/main/res/font/orbitron_*.ttf app/src/main/res/font/exo2_*.ttf app/src/main/res/font/rajdhani_*.ttf app/src/main/res/font/share_tech_mono.ttf
+          echo "Using Android system typeface fallback; no network font dependency"
 
       - name: Apply flagship theme and cyberpunk UI sources
         working-directory: ChargeAnimPro
