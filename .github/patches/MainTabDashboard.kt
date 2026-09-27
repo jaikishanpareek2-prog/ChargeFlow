@@ -45,6 +45,8 @@ import com.chargeanim.pro.ui.overlay.ChargingOverlayScreen
 import com.chargeanim.pro.ui.theme.ThemeCatalog
 import com.chargeanim.pro.ui.theme.ThemeId
 import com.chargeanim.pro.ui.theme.ThemeVisual
+import com.chargeanim.pro.ui.theme.FlagshipThemeVisual
+import com.chargeflow.theme.ThemeId as FlagshipThemeId
 import kotlinx.coroutines.launch
 
 private enum class DashboardTab(val label: String) {
@@ -82,7 +84,7 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-        TabRow(selectedTabIndex = tab.ordinal) {
+        ScrollableTabRow(selectedTabIndex = tab.ordinal, edgePadding = 8.dp) {
             DashboardTab.entries.forEach { t ->
                 Tab(
                     selected = tab == t,
@@ -149,12 +151,9 @@ private fun ThemeCard(themeId: ThemeId, isSelected: Boolean, onClick: () -> Unit
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                ThemeVisual(themeId, Modifier.fillMaxSize()) {
-                    Text(
-                        "72%",
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineSmall
-                    )
+                val flagshipId = runCatching { FlagshipThemeId.valueOf(themeId.name) }.getOrDefault(FlagshipThemeId.FUTURISTIC)
+                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = true) {
+                    Text("72%", color = Color.White, style = MaterialTheme.typography.headlineSmall)
                 }
             }
             Spacer(Modifier.height(10.dp))
