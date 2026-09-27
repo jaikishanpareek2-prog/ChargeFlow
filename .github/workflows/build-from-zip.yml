@@ -62,6 +62,7 @@ jobs:
           cp ../.github/patches/CyberpunkColors.kt app/src/main/java/com/chargeanim/pro/ui/theme/CyberpunkColors.kt
           cp ../.github/patches/CyberpunkTypography.kt app/src/main/java/com/chargeanim/pro/ui/theme/CyberpunkTypography.kt
           cp ../.github/patches/ChargeFlowTheme.kt app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowTheme.kt
+          cp ../.github/patches/SkinAccents.kt app/src/main/java/com/chargeanim/pro/ui/theme/SkinAccents.kt
           python3 ../.github/scripts/patch_flagship_ui.py
 
       - name: Apply Cyberpunk color palette
