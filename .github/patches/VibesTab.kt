@@ -44,6 +44,7 @@ fun VibesTab() {
                 selected = type
             }
         }
+        }
     }
 }
 
