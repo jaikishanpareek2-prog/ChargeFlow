@@ -364,12 +364,7 @@ private fun PreviewTab(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit
             percent = metrics.batteryPercent,
             isCharging = metrics.isCharging,
             isFastCharging = metrics.chargingProfile == com.chargeanim.pro.telemetry.ChargingProfile.TURBO,
-            chargeMode = when (metrics.plugType) {
-                BatteryManager.BATTERY_PLUGGED_USB -> com.chargeanim.pro.telemetry.ChargeMode.USB
-                BatteryManager.BATTERY_PLUGGED_AC -> com.chargeanim.pro.telemetry.ChargeMode.AC
-                BatteryManager.BATTERY_PLUGGED_WIRELESS -> com.chargeanim.pro.telemetry.ChargeMode.WIRELESS
-                else -> com.chargeanim.pro.telemetry.ChargeMode.NONE
-            },
+            chargeMode = com.chargeanim.pro.telemetry.ChargeMode.USB,
             voltage = metrics.voltageVolts.toFloat().takeIf { it > 0f },
             currentMa = (metrics.currentAmps * 1000f).takeIf { it > 0.001f },
             wattage = metrics.powerWatts.toFloat().takeIf { it > 0.05f },
