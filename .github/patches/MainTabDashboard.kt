@@ -2,6 +2,7 @@ package com.chargeanim.pro.ui.main
 
 import android.content.Intent
 import android.net.Uri
+import android.os.BatteryManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -75,11 +76,11 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
-            Text("CHARGEFLOW", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-            Text("Charging, redesigned.", style = MaterialTheme.typography.headlineMedium)
+            Text("ChargeFlow", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+            Text("Charging, redesigned.", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Text(
-                "A flagship charging experience with expressive visuals, live telemetry and cinematic themes.",
-                style = MaterialTheme.typography.bodyMedium,
+                "Flagship charging visuals and live telemetry.",
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -114,7 +115,7 @@ private fun ThemesTab(prefs: PreferencesRepository) {
     val scope = rememberCoroutineScope()
     val selected by prefs.theme.collectAsStateWithLifecycle(initialValue = ThemeId.FUTURISTIC)
     LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
-        items(items = ThemeId.entries, key = { it.name }) { themeId ->
+        items(items = ThemeId.entries.filter { it.ordinal < 12 }, key = { it.name }) { themeId ->
             ThemeCard(themeId, themeId == selected) { scope.launch { prefs.setTheme(themeId) } }
         }
     }
@@ -152,9 +153,7 @@ private fun ThemeCard(themeId: ThemeId, isSelected: Boolean, onClick: () -> Unit
                 contentAlignment = Alignment.Center
             ) {
                 val flagshipId = runCatching { FlagshipThemeId.valueOf(themeId.name) }.getOrDefault(FlagshipThemeId.FUTURISTIC)
-                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = true) {
-                    Text("72%", color = Color.White, style = MaterialTheme.typography.headlineSmall)
-                }
+                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = false)
             }
             Spacer(Modifier.height(10.dp))
             Text(
@@ -353,18 +352,62 @@ private fun MetricsPanel(metrics: ChargingMetrics) {
 
 @Composable
 private fun PreviewTab(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) {
+    val context = LocalContext.current
     val theme by prefs.theme.collectAsStateWithLifecycle(initialValue = ThemeId.FUTURISTIC)
-    val fakeStatus = remember { BatteryStatusData(percent = 72, isCharging = true, isFastCharging = true, chargeMode = com.chargeanim.pro.telemetry.ChargeMode.USB, voltage = 5.02f, currentMa = 3670, wattage = 18.4f, temperatureC = 32f, elapsedChargingMs = 11 * 60_000L, sessionStartPercent = 60) }
+    val metricsState = remember { ChargingMetricsProvider.acquire(context.applicationContext) }
+    val metrics by metricsState.collectAsStateWithLifecycle()
+    DisposableEffect(Unit) { onDispose { ChargingMetricsProvider.release() } }
+
+    val liveStatus = remember(metrics) {
+        BatteryStatusData(
+            percent = metrics.batteryPercent,
+            isCharging = metrics.isCharging,
+            isFastCharging = metrics.chargingProfile == com.chargeanim.pro.telemetry.ChargingProfile.TURBO,
+            chargeMode = when (metrics.plugType) {
+                BatteryManager.BATTERY_PLUGGED_USB -> com.chargeanim.pro.telemetry.ChargeMode.USB
+                BatteryManager.BATTERY_PLUGGED_AC -> com.chargeanim.pro.telemetry.ChargeMode.AC
+                BatteryManager.BATTERY_PLUGGED_WIRELESS -> com.chargeanim.pro.telemetry.ChargeMode.WIRELESS
+                else -> com.chargeanim.pro.telemetry.ChargeMode.NONE
+            },
+            voltage = metrics.voltageVolts.toFloat().takeIf { it > 0f },
+            currentMa = (metrics.currentAmps * 1000f).takeIf { it > 0.001f },
+            wattage = metrics.powerWatts.toFloat().takeIf { it > 0.05f },
+            temperatureC = metrics.temperatureCelsius.toFloat().takeIf { it > 0f },
+            elapsedChargingMs = metrics.sessionSeconds * 1000L,
+            sessionStartPercent = null
+        )
+    }
+
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.padding(24.dp).aspectRatio(0.5f).clip(RoundedCornerShape(28.dp)).background(Color.Black)) {
-            ChargingOverlayScreen(status = fakeStatus, theme = theme, media = com.chargeanim.pro.data.MediaSelection(null, MediaType.NONE))
+        Box(
+            Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                .fillMaxWidth()
+                .weight(1f)
+                .clip(RoundedCornerShape(28.dp))
+                .background(Color.Black)
+        ) {
+            ChargingOverlayScreen(
+                status = liveStatus,
+                theme = theme,
+                media = com.chargeanim.pro.data.MediaSelection(null, MediaType.NONE),
+                showTelemetry = false
+            )
+            Text(
+                "LIVE DEVICE DATA",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 14.dp)
+            )
         }
-        Text("Preview with sample data — tap Settings to enable the system overlay before charging.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 24.dp))
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onLaunchOverlay) { Text("Open full-screen now") }
+        Text(
+            "Monitor uses the same live metrics source as Telemetry.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+        )
+        Button(onClick = onLaunchOverlay) { Text("Open full-screen") }
     }
 }
-
 @Composable
 private fun SettingSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
