@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.sp
 import com.chargeanim.pro.ui.theme.ThemeType
 import com.chargeanim.pro.ui.theme.VibesThemeManager
 import com.chargeanim.pro.ui.theme.VibeVisual
+import com.chargeanim.pro.ui.theme.FlagshipThemeVisual
+import com.chargeflow.theme.ThemeId as FlagshipThemeId
 
 @Composable
 fun VibesTab() {
@@ -60,7 +62,14 @@ private fun VibeCard(type: ThemeType, isSelected: Boolean, onClick: () -> Unit) 
     ) {
         Box(Modifier.fillMaxWidth().height(148.dp).background(Color.Black, RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
             if (type != ThemeType.NONE) {
-                VibeVisual(type, Modifier.fillMaxSize())
+                val flagshipId = when (type) {
+                    ThemeType.MIDNIGHT_GARDEN -> FlagshipThemeId.MIDNIGHT_GARDEN
+                    ThemeType.CELESTIAL_SPARKLE -> FlagshipThemeId.CELESTIAL_SPARKLE
+                    ThemeType.ENCHANTED_FOREST -> FlagshipThemeId.ENCHANTED_FOREST
+                    ThemeType.OCEAN_ABYSS -> FlagshipThemeId.OCEAN_ABYSS
+                    ThemeType.NONE -> FlagshipThemeId.FUTURISTIC
+                }
+                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = true)
                 androidx.compose.material3.Text("72%", color = Color.White, fontSize = 28.sp)
             } else {
                 androidx.compose.material3.Text("BASE", color = Color(0xFF8793A8), fontSize = 22.sp)
