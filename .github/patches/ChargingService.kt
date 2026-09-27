@@ -289,6 +289,7 @@ class ChargingService : Service() {
 
         DiagnosticLog.add(this, "Creating Compose overlay lifecycle owner")
         val owner = OverlayLifecycleOwner().apply {
+            initializeSavedState()
             handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
             handleLifecycleEvent(Lifecycle.Event.ON_START)
             handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
@@ -438,5 +439,9 @@ private class OverlayLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, Saved
     override val viewModelStore = ViewModelStore()
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry get() = savedStateController.savedStateRegistry
+    fun initializeSavedState() {
+        savedStateController.performAttach()
+        savedStateController.performRestore(null)
+    }
     fun handleLifecycleEvent(event: Lifecycle.Event) = lifecycleRegistry.handleLifecycleEvent(event)
 }
