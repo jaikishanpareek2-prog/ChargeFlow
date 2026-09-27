@@ -58,7 +58,9 @@ fun FlagshipThemeVisual(
             ) || theme.hasLightning
 
             if (particleEngine) particles.forEach { p ->
-                val t = (phase * theme.particleSpeed.start + p.phase) % 1f
+                val speed = theme.particleSpeed.start +
+                    (theme.particleSpeed.endInclusive - theme.particleSpeed.start) * p.size
+                val t = (phase * speed + p.phase) % 1f
                 val x = if (theme.hasMatrix) p.x * size.width else (p.x + sin((t + p.y) * 6.283f) * 0.04f) * size.width
                 val baseY = if (theme.upwardBias) 1f - t else t
                 val y = if (theme.gravity > 0f) (p.y + t * (0.35f + theme.gravity * 0.08f)) % 1f * size.height else (baseY + p.y * 0.15f) % 1f * size.height
