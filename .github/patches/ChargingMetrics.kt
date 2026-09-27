@@ -33,7 +33,9 @@ data class ChargingMetrics(
     val sessionSeconds: Long = 0L,
     val plugType: Int = 0,
     val updatedAtMillis: Long = 0L
-)
+) {
+    val hasPowerFlow: Boolean get() = isCharging && (powerWatts >= 0.05 || currentAmps >= 0.05)
+}
 
 enum class ChargingProfile { ECO, BALANCED, TURBO }
 
@@ -94,18 +96,20 @@ class ChargingMetricsManager(private val context: Context) {
         val currentAmps = abs(currentMicroAmps) / 1_000_000.0
         val power = (voltage * currentAmps).coerceAtLeast(0.0)
 
-        if (charging && !wasCharging) {
+        val activeFlow = charging && (power >= 0.05 || currentAmps >= 0.05)
+
+        if (activeFlow && !wasCharging) {
             // Start each charging session with a clean rate sample.
             sessionStart = now
             lastPercent = percent
             lastSampleTime = now
             rateEma = 0.0
-        } else if (!charging) {
+        } else if (!activeFlow) {
             sessionStart = 0L
             rateEma = 0.0
         }
 
-        if (charging && wasCharging && lastPercent >= 0 && lastSampleTime > 0L && percent > lastPercent) {
+        if (activeFlow && wasCharging && lastPercent >= 0 && lastSampleTime > 0L && percent > lastPercent) {
             val hours = (now - lastSampleTime).toDouble() / 3_600_000.0
             if (hours > 0.0) {
                 val instantRate = (percent - lastPercent) / hours
@@ -114,9 +118,9 @@ class ChargingMetricsManager(private val context: Context) {
         }
         lastPercent = percent
         lastSampleTime = now
-        wasCharging = charging
+        wasCharging = activeFlow
 
-        val remaining = if (charging && !full && rateEma > 0.05) {
+        val remaining = if (activeFlow && !full && rateEma > 0.05) {
             max(1, ((100 - percent) / rateEma * 60.0).roundToInt())
         } else null
 
@@ -135,7 +139,7 @@ class ChargingMetricsManager(private val context: Context) {
                 power >= 5.0 -> ChargingProfile.BALANCED
                 else -> ChargingProfile.ECO
             },
-            sessionSeconds = if (sessionStart > 0L) (now - sessionStart) / 1000L else 0L,
+            sessionSeconds = if (activeFlow && sessionStart > 0L) (now - sessionStart) / 1000L else 0L,
             plugType = plug,
             updatedAtMillis = now
         )
