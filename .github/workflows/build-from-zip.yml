@@ -139,7 +139,7 @@ jobs:
               s = s.replace('</application>', service + '    </application>')
           if 'android:name=".service.ChargingReceiver"' not in s:
               receiver = (
-                  '    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="false">\n'
+                  '    <receiver android:name=".service.ChargingReceiver" android:enabled="true" android:exported="true">\n'
                   '              <intent-filter>\n'
                   '                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\n'
                   '                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />\n'
