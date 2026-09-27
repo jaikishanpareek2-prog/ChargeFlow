@@ -131,16 +131,25 @@ class ChargingService : Service() {
         prefsRepo = PreferencesRepository(applicationContext)
         telemetry.start()
         DiagnosticLog.add(this, "Battery telemetry and shared charging metrics started")
+        var lastMetricLogAt = 0L
+        var lastMetricLogSignature = ""
         metricsJob = serviceScope.launch {
             chargingMetricsState.collect { metrics ->
-                DiagnosticLog.add(
-                    this@ChargingService,
-                    "Metrics: ${metrics.batteryPercent}% ${String.format(java.util.Locale.US, "%.2fV", metrics.voltageVolts)} " +
-                        "${String.format(java.util.Locale.US, "%.2fA", metrics.currentAmps)} " +
-                        "${String.format(java.util.Locale.US, "%.2fW", metrics.powerWatts)} " +
-                        "${String.format(java.util.Locale.US, "%.1fC", metrics.temperatureCelsius)} " +
-                        "profile=${metrics.chargingProfile} ttf=${metrics.timeToFullMinutes?.let { "${it}m" } ?: "—"}"
-                )
+                val signature = metrics.batteryPercent.toString() + "|" + metrics.isCharging + "|" + metrics.hasPowerFlow + "|" + metrics.chargingProfile + "|" + (metrics.powerWatts * 2).toInt()
+                val now = System.currentTimeMillis()
+                if (signature != lastMetricLogSignature && now - lastMetricLogAt >= 15_000L) {
+                    lastMetricLogSignature = signature
+                    lastMetricLogAt = now
+                    DiagnosticLog.add(
+                        this@ChargingService,
+                        "Metrics: ${metrics.batteryPercent}% " +
+                            String.format(java.util.Locale.US, "%.2fV ", metrics.voltageVolts) +
+                            (if (metrics.hasPowerFlow) String.format(java.util.Locale.US, "%.2fA ", metrics.currentAmps) else "— ") +
+                            (if (metrics.hasPowerFlow) String.format(java.util.Locale.US, "%.2fW ", metrics.powerWatts) else "— ") +
+                            String.format(java.util.Locale.US, "%.1fC ", metrics.temperatureCelsius) +
+                            "state=" + if (metrics.hasPowerFlow) metrics.chargingProfile.name else if (metrics.isCharging) "ECO_IDLE" else "NOT_CHARGING"
+                    )
+                }
             }
         }
         keyguardManager = getSystemService(KeyguardManager::class.java)
@@ -251,19 +260,22 @@ class ChargingService : Service() {
 
         // The watcher remains alive for the whole charging session. Visibility is
         // derived from charging + lock/user state; it is never time-limited.
-        val shouldShow = enabled && when (animationMode) {
+        val wantsOverlay = enabled && when (animationMode) {
             AnimationMode.ALWAYS_ON -> locked
             AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
         }
+        val overlayAllowed = Settings.canDrawOverlays(this)
+        val shouldShow = wantsOverlay && overlayAllowed
 
         DiagnosticLog.add(
             this,
             "Evaluate: reason=$reason charging=$charging locked=$locked enabled=$enabled " +
-                "mode=$animationMode userPresent=$userPresentSincePlugged show=$shouldShow"
+                "mode=$animationMode userPresent=$userPresentSincePlugged wantsShow=$wantsOverlay " +
+                "overlayAllowed=$overlayAllowed show=$shouldShow"
         )
 
         if (shouldShow) showOverlayIfAllowed(haptic)
-        else removeOverlay(reason)
+        else removeOverlay(if (wantsOverlay && !overlayAllowed) "OVERLAY_PERMISSION_REQUIRED" else reason)
     }
 
     private fun showOverlayIfAllowed(haptic: Boolean = false) {
@@ -277,7 +289,7 @@ class ChargingService : Service() {
                 }
             }
         } else {
-            DiagnosticLog.add(this, "Overlay permission missing; watcher remains alive")
+            DiagnosticLog.add(this, "Overlay permission missing; automatic overlay blocked")
         }
     }
 
