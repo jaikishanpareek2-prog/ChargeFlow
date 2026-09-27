@@ -330,26 +330,27 @@ private fun DiagnosticsTab(active: Boolean) {
 
 @Composable
 private fun MetricsPanel(metrics: ChargingMetrics) {
+    val active = metrics.hasPowerFlow
     val powerState = when {
         metrics.isFull -> "FULL"
-        metrics.isCharging -> "CHARGING • ${metrics.chargingProfile.name}"
+        active -> "CHARGING • ${metrics.chargingProfile.name}"
+        metrics.isCharging -> "CONNECTED • ECO / IDLE"
         else -> "NOT CHARGING"
     }
-    val timeToFull = metrics.timeToFullMinutes?.let { "${it} min" } ?: "—"
-    val rate = if (metrics.chargeRatePercentPerHour > 0.05) String.format(java.util.Locale.US, "%.1f %%/h", metrics.chargeRatePercentPerHour) else "—"
+    val timeToFull = if (active) metrics.timeToFullMinutes?.let { "${it} min" } ?: "—" else "—"
+    val rate = if (active && metrics.chargeRatePercentPerHour > 0.05) String.format(java.util.Locale.US, "%.1f %%/h", metrics.chargeRatePercentPerHour) else "—"
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().background(Color(0xFF0A0E1A), RoundedCornerShape(14.dp)).padding(14.dp)) {
-        Text(powerState, color = Color(0xFF55E6FF), style = MaterialTheme.typography.titleSmall)
+        Text(powerState, color = if (active) Color(0xFF55E6FF) else Color(0xFF8793A8), style = MaterialTheme.typography.titleSmall)
         Text("BATTERY %   ${metrics.batteryPercent}%")
-        Text(if (metrics.isCharging) String.format(java.util.Locale.US, "VOLTAGE   %.2f V", metrics.voltageVolts) else "VOLTAGE   —")
-        Text(if (metrics.isCharging) String.format(java.util.Locale.US, "CURRENT   %.2f A", metrics.currentAmps) else "CURRENT   —")
-        Text(if (metrics.isCharging) String.format(java.util.Locale.US, "POWER     %.2f W", metrics.powerWatts) else "POWER     —")
-        Text(if (metrics.isCharging) String.format(java.util.Locale.US, "TEMPERATURE   %.1f °C", metrics.temperatureCelsius) else "TEMPERATURE   —")
+        Text(if (metrics.voltageVolts > 0.0) String.format(java.util.Locale.US, "VOLTAGE   %.2f V", metrics.voltageVolts) else "VOLTAGE   —")
+        Text(if (active) String.format(java.util.Locale.US, "CURRENT   %.2f A", metrics.currentAmps) else "CURRENT   —")
+        Text(if (active) String.format(java.util.Locale.US, "POWER     %.2f W", metrics.powerWatts) else "POWER     —")
+        Text(if (metrics.temperatureCelsius > 0.0) String.format(java.util.Locale.US, "TEMPERATURE   %.1f °C", metrics.temperatureCelsius) else "TEMPERATURE   —")
         Text("CHARGE RATE   $rate")
         Text("TIME TO FULL   $timeToFull")
-        Text("SESSION   ${metrics.sessionSeconds / 60} min")
+        Text("SESSION   ${if (active) metrics.sessionSeconds / 60 else 0} min")
     }
 }
-
 @Composable
 private fun PreviewTab(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) {
     val context = LocalContext.current
