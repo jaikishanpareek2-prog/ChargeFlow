@@ -18,6 +18,8 @@ class FlowingWaveView @JvmOverloads constructor(
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var flow = 0f
+    private var accentStart = 0xFF7C4DFF.toInt()
+    private var accentEnd = 0xFF00E5FF.toInt()
     private var animator: ValueAnimator? = null
 
     init {
@@ -28,31 +30,43 @@ class FlowingWaveView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val h = height.toFloat()
-        val w = width.toFloat()
+        val w = width.toFloat().coerceAtLeast(1f)
         val y = h * flow
 
         paint.shader = LinearGradient(
-            0f, y - h * 0.18f, 0f, y + h * 0.18f,
-            intArrayOf(0x001F8BFF, 0xAA8A5CFF.toInt(), 0x001F8BFF),
-            floatArrayOf(0f, 0.5f, 1f),
+            0f, 0f, w, 0f,
+            intArrayOf(0x001F8BFF, accentStart, accentEnd, 0x001F8BFF),
+            floatArrayOf(0f, 0.28f, 0.72f, 1f),
             Shader.TileMode.CLAMP
         )
-        paint.strokeWidth = 3f
+        paint.strokeWidth = 3.5f
         paint.style = Paint.Style.STROKE
 
         val path = android.graphics.Path()
-        val amplitude = w * 0.035f
-        val cycles = 3.5f
+        val amplitude = w * 0.028f
+        val cycles = 2.4f
         path.moveTo(0f, y)
         for (x in 0..w.toInt()) {
             val xx = x.toFloat()
-            val yy = y + kotlin.math.sin((xx / w) * cycles * Math.PI * 2.0).toFloat() * amplitude
+            val yy = y + kotlin.math.sin((xx / w) * cycles * Math.PI * 2.0 + flow * Math.PI * 2.0).toFloat() * amplitude
             path.lineTo(xx, yy)
         }
         canvas.drawPath(path, paint)
+
         paint.shader = null
+        paint.style = Paint.Style.FILL
+        val pulseX = (flow * w).coerceIn(0f, w)
+        paint.color = accentEnd
+        paint.alpha = 210
+        canvas.drawCircle(pulseX, y, 4.5f, paint)
+        paint.alpha = 255
     }
 
+    fun setAccentColors(primary: Int, secondary: Int) {
+        accentStart = primary
+        accentEnd = secondary
+        invalidate()
+    }
     fun startFlow(durationMs: Long = 2000L) {
         animator?.cancel()
         animator = ValueAnimator.ofFloat(1f, 0f).apply {
