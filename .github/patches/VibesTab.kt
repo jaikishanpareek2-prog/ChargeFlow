@@ -69,8 +69,7 @@ private fun VibeCard(type: ThemeType, isSelected: Boolean, onClick: () -> Unit) 
                     ThemeType.OCEAN_ABYSS -> FlagshipThemeId.OCEAN_ABYSS
                     ThemeType.NONE -> FlagshipThemeId.FUTURISTIC
                 }
-                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = true)
-                androidx.compose.material3.Text("72%", color = Color.White, fontSize = 28.sp)
+                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = false, animated = false)
             } else {
                 androidx.compose.material3.Text("BASE", color = Color(0xFF8793A8), fontSize = 22.sp)
             }
