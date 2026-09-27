@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import com.chargeflow.theme.FlagshipThemes
 import com.chargeflow.theme.ThemeId
-import import kotlin.math.cos
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -91,7 +91,7 @@ private fun DrawScope.precision(c:Offset,r:Float,t:com.chargeflow.theme.Flagship
     drawLine(t.primary.copy(alpha=.7f),Offset(c.x-r*.75f,c.y),Offset(c.x+r*.75f,c.y),1f);repeat(8){i->val x=c.x-r*.65f+i*r*.19f;val h=r*(.06f+((i+1)%3)*.07f);drawLine(t.secondary.copy(alpha=.45f),Offset(x,c.y-h),Offset(x,c.y+h),1f)};val x=c.x-r*.72f+((phase*1.4)%1)*r*1.44f;drawLine(t.accent,Offset(x,c.y-r*.3f),Offset(x,c.y+r*.3f),2f)
 }
 private fun DrawScope.petals(c:Offset,r:Float,t:com.chargeflow.theme.FlagshipTheme,phase:Float){
-    repeat(9){i->val a=i*Math.PI.toFloat()*2f/9f+phase*.8f;val x=c.x+cos(a).toFloat()*r*.42f;val y=c.y+sin(a).toFloat()*r*.42f;drawLine(t.particleColors[i%t.particleColors.size],Offset(x,y),Offset(x+cos(a).toFloat()*r*.22f,y+sin(a).toFloat()*r*.22f),5f)};drawLine(t.secondary.copy(alpha=.6f),Offset(c.x-r*.9f,c.y+r*.7f),Offset(c.x+r*.9f,c.y-r*.55f),2f)
+    repeat(9){i->val a=i*Math.PI.toFloat()*2f/9f+phase*.8f;val x=c.x+cos(a.toDouble()).toFloat()*r*.42f;val y=c.y+sin(a.toDouble()).toFloat()*r*.42f;drawLine(t.particleColors[i%t.particleColors.size],Offset(x,y),Offset(x+cos(a).toFloat()*r*.22f,y+sin(a).toFloat()*r*.22f),5f)};drawLine(t.secondary.copy(alpha=.6f),Offset(c.x-r*.9f,c.y+r*.7f),Offset(c.x+r*.9f,c.y-r*.55f),2f)
 }
 private fun DrawScope.ribbons(c:Offset,r:Float,t:com.chargeflow.theme.FlagshipTheme,phase:Float){
     listOf(t.primary,t.secondary,t.accent).forEachIndexed{b,col->val p=Path();for(i in 0..70){val u=i/70f;val x=c.x-r*1.35f+u*r*2.7f;val y=c.y+(b-1)*r*.34f+sin((u*Math.PI.toFloat()*2.1f+phase*6.28f+b).toDouble()).toFloat()*r*.18f;if(i==0)p.moveTo(x,y)else p.lineTo(x,y)};drawPath(p,col.copy(alpha=.7f),style=Stroke(5f-b))}
