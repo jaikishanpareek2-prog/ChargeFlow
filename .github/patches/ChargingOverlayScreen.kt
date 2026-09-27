@@ -106,7 +106,7 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
             }
             AndroidView(
                 factory = { context -> FlowingWaveView(context) },
-                update = { it.startFlow() },
+                update = { it.setAccentColors(accent.toArgb(), FlagshipThemes.get(flagshipId).secondary.toArgb()); it.startFlow() },
                 modifier = Modifier.fillMaxWidth().height(70.dp)
             )
             PortGlow(accent)
