@@ -99,12 +99,46 @@ fun FlagshipThemeVisual(
             }
 
             if (theme.hasLightning) {
-                val path=Path()
-                path.moveTo(center.x-radius*0.35f,center.y-radius*0.8f)
-                path.lineTo(center.x+radius*0.05f,center.y-radius*0.12f)
-                path.lineTo(center.x-radius*0.08f,center.y-radius*0.12f)
-                path.lineTo(center.x+radius*0.4f,center.y+radius*0.78f)
-                drawPath(path,theme.accent.copy(alpha=0.85f*glow),style=Stroke(width=theme.ringStroke*0.9f))
+                val main = Path().apply {
+                    moveTo(center.x - radius * 0.32f, center.y - radius * 0.82f)
+                    lineTo(center.x + radius * 0.02f, center.y - radius * 0.18f)
+                    lineTo(center.x - radius * 0.08f, center.y - radius * 0.18f)
+                    lineTo(center.x + radius * 0.38f, center.y + radius * 0.78f)
+                }
+                drawPath(
+                    main,
+                    theme.accent.copy(alpha = 0.9f * glow),
+                    style = Stroke(width = theme.ringStroke * 0.9f)
+                )
+                val branches = listOf(
+                    listOf(
+                        Offset(center.x + radius * 0.02f, center.y - radius * 0.18f),
+                        Offset(center.x + radius * 0.34f, center.y - radius * 0.48f),
+                        Offset(center.x + radius * 0.54f, center.y - radius * 0.42f)
+                    ),
+                    listOf(
+                        Offset(center.x - radius * 0.08f, center.y - radius * 0.18f),
+                        Offset(center.x - radius * 0.42f, center.y + radius * 0.08f),
+                        Offset(center.x - radius * 0.55f, center.y + radius * 0.02f)
+                    ),
+                    listOf(
+                        Offset(center.x + radius * 0.12f, center.y + radius * 0.22f),
+                        Offset(center.x - radius * 0.12f, center.y + radius * 0.46f),
+                        Offset(center.x - radius * 0.34f, center.y + radius * 0.42f)
+                    )
+                )
+                branches.forEach { points ->
+                    val branch = Path().apply {
+                        moveTo(points[0].x, points[0].y)
+                        lineTo(points[1].x, points[1].y)
+                        lineTo(points[2].x, points[2].y)
+                    }
+                    drawPath(
+                        branch,
+                        theme.primary.copy(alpha = 0.72f * glow),
+                        style = Stroke(width = theme.ringStroke * 0.55f)
+                    )
+                }
             }
 
             if (theme.hasCrystals) repeat(6) { i ->
