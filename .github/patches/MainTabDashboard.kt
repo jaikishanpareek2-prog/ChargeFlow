@@ -227,7 +227,7 @@ private fun SettingsTab(prefs: PreferencesRepository) {
             if (animationMode == AnimationMode.TEMPORARY)
                 "Shows on charge and while the lock screen is active; hides after unlock."
             else
-                "Stays visible continuously while charging, including after unlock.",
+                "Stays visible continuously while charging and locked; hides after unlock.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
