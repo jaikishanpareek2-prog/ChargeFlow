@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -43,6 +44,7 @@ import com.chargeanim.pro.telemetry.ChargingMetricsProvider
 import com.chargeanim.pro.ui.overlay.ChargingOverlayScreen
 import com.chargeanim.pro.ui.theme.ThemeCatalog
 import com.chargeanim.pro.ui.theme.ThemeId
+import com.chargeanim.pro.ui.theme.ThemeVisual
 import kotlinx.coroutines.launch
 
 private enum class DashboardTab(val label: String) {
@@ -67,9 +69,18 @@ fun MainTabDashboard(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit) 
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { DashboardTab.entries.size })
     val scope = rememberCoroutineScope()
     val tab = DashboardTab.entries[pagerState.currentPage]
-    Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(20.dp, 20.dp, 20.dp, 8.dp)) {
-            Text("ChargeFlow", style = MaterialTheme.typography.headlineMedium)
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)
+        ) {
+            Text("CHARGEFLOW", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            Text("Charging, redesigned.", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "A flagship charging experience with expressive visuals, live telemetry and cinematic themes.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
         TabRow(selectedTabIndex = tab.ordinal) {
             DashboardTab.entries.forEach { t ->
@@ -110,17 +121,55 @@ private fun ThemesTab(prefs: PreferencesRepository) {
 @Composable
 private fun ThemeCard(themeId: ThemeId, isSelected: Boolean, onClick: () -> Unit) {
     val style = ThemeCatalog.getValue(themeId)
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-        .background(if (isSelected) style.accentPrimary.copy(alpha = 0.10f) else Color(0xFF0A0E1A), RoundedCornerShape(16.dp))
-        .clickable(onClick = onClick).padding(10.dp)) {
-        Box(Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(74.dp).clip(RoundedCornerShape(37.dp)).background(style.accentPrimary.copy(alpha = 0.16f)))
-            Box(Modifier.size(50.dp).clip(RoundedCornerShape(25.dp)).background(style.accentSecondary.copy(alpha = 0.14f)))
-            Text("72%", color = Color(0xFFEAF4FF), style = MaterialTheme.typography.titleLarge)
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                style.accentPrimary.copy(alpha = 0.12f)
+            else MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = if (isSelected)
+            androidx.compose.foundation.BorderStroke(1.5.dp, style.accentPrimary.copy(alpha = 0.72f))
+        else null
+    ) {
+        Column(Modifier.padding(10.dp)) {
+            Box(
+                Modifier.fillMaxWidth().height(148.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                style.accentPrimary.copy(alpha = 0.16f),
+                                style.accentSecondary.copy(alpha = 0.08f),
+                                Color.Black
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                ThemeVisual(themeId, Modifier.fillMaxSize()) {
+                    Text(
+                        "72%",
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                themeId.label,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1
+            )
+            Text(
+                if (isSelected) "ACTIVE EXPERIENCE" else "Tap to preview",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isSelected) style.accentPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 3.dp)
+            )
         }
-        Spacer(Modifier.height(8.dp))
-        Text(themeId.label, color = Color(0xFFEAF4FF), style = MaterialTheme.typography.bodyMedium)
-        if (isSelected) Text("Selected", color = style.accentPrimary, style = MaterialTheme.typography.labelSmall)
     }
 }
 
