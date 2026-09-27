@@ -23,6 +23,7 @@ class FlowingWaveView @JvmOverloads constructor(
     private var flow = 0f
     private var accentStart = 0xFF00E5FF.toInt()
     private var accentEnd = 0xFF7C4DFF.toInt()
+    private var accentMid = 0xFF18FFFF.toInt()
     private var animator: ValueAnimator? = null
 
     init {
@@ -37,20 +38,24 @@ class FlowingWaveView @JvmOverloads constructor(
         val travel = flow * w
         val gradient = LinearGradient(
             0f, 0f, w, 0f,
-            intArrayOf(0x00100000, accentStart, accentEnd, accentStart, 0x00100000),
-            floatArrayOf(0f, .18f, .5f, .82f, 1f),
+            intArrayOf(0x00100000, accentStart, accentMid, accentEnd, accentMid, accentStart, 0x00100000),
+            floatArrayOf(0f, .12f, .32f, .5f, .68f, .88f, 1f),
             Shader.TileMode.CLAMP
         )
 
-        drawLayer(canvas, centerY, w, h, .00f, 1.0f, 3.0f, 150, gradient)
-        drawLayer(canvas, centerY, w, h, .17f, .72f, 1.7f, 105, gradient)
-        drawLayer(canvas, centerY, w, h, -.14f, .48f, 1.1f, 80, gradient)
+        drawLayer(canvas, centerY, w, h, .00f, 1.0f, 3.0f, 150, gradient, 1.65f)
+        drawLayer(canvas, centerY - h * .08f, w, h, 1.35f, .68f, 1.6f, 100, gradient, 1.15f)
+        drawLayer(canvas, centerY + h * .08f, w, h, -1.10f, .52f, 1.2f, 82, gradient, 2.05f)
 
         paint.shader = null
         paint.style = Paint.Style.FILL
-        paint.color = accentEnd
+        paint.color = accentMid
         paint.alpha = 235
         canvas.drawCircle(travel, centerY, 4.2f, paint)
+        paint.alpha = 115
+        canvas.drawCircle(travel, centerY, 15f, paint)
+        paint.alpha = 45
+        canvas.drawCircle(travel, centerY, 28f, paint)
         paint.alpha = 75
         canvas.drawCircle(travel, centerY, 10f, paint)
 
@@ -67,6 +72,7 @@ class FlowingWaveView @JvmOverloads constructor(
         paint.alpha = 220
         canvas.drawCircle(portX, h - 3f, 3.5f, paint)
         paint.alpha = 255
+        paint.shader = null
     }
 
     private fun drawLayer(
@@ -78,15 +84,15 @@ class FlowingWaveView @JvmOverloads constructor(
         amplitudeScale: Float,
         stroke: Float,
         alpha: Int,
-        shader: Shader
+        shader: Shader,
+        cycles: Float
     ) {
         paint.shader = shader
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = stroke
         paint.alpha = alpha
         val path = Path()
-        val cycles = 1.65f
-        for (x in 0..width.toInt()) {
+                for (x in 0..width.toInt()) {
             val xx = x.toFloat()
             val primary = sin((xx / width) * cycles * PI * 2.0 + flow * PI * 2.0 + offset).toFloat()
             val secondary = sin((xx / width) * cycles * PI * 4.0 - flow * PI * 3.0 + offset * 1.7).toFloat() * .28f
@@ -99,7 +105,16 @@ class FlowingWaveView @JvmOverloads constructor(
     fun setAccentColors(primary: Int, secondary: Int) {
         accentStart = primary
         accentEnd = secondary
+        accentMid = blend(primary, secondary, 0.48f)
         invalidate()
+    }
+
+    private fun blend(a: Int, b: Int, fraction: Float): Int {
+        val f = fraction.coerceIn(0f, 1f)
+        val ar = (a shr 16) and 0xFF; val ag = (a shr 8) and 0xFF; val ab = a and 0xFF
+        val br = (b shr 16) and 0xFF; val bg = (b shr 8) and 0xFF; val bb = b and 0xFF
+        val r = (ar + (br - ar) * f).toInt(); val g = (ag + (bg - ag) * f).toInt(); val bl = (ab + (bb - ab) * f).toInt()
+        return (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
     }
 
     fun startFlow(durationMs: Long = 2600L) {
