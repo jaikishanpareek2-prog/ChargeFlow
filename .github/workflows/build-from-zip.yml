@@ -163,7 +163,7 @@ jobs:
                   '                  <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />\n'
                   '                  <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />\n'
                   '                  <action android:name="android.intent.action.BOOT_COMPLETED" />\n'
-                  '                  <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />\n'
+                  ''
                   '                  <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n'
                   '              </intent-filter>\n'
                   '          </receiver>\n'
