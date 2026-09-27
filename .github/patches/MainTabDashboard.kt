@@ -364,7 +364,7 @@ private fun PreviewTab(prefs: PreferencesRepository, onLaunchOverlay: () -> Unit
             percent = metrics.batteryPercent,
             isCharging = metrics.hasPowerFlow,
             isFastCharging = metrics.hasPowerFlow && metrics.chargingProfile == com.chargeanim.pro.telemetry.ChargingProfile.TURBO,
-            chargeMode = if (metrics.hasPowerFlow) com.chargeanim.pro.telemetry.ChargeMode.USB else com.chargeanim.pro.telemetry.ChargeMode.NONE,
+            chargeMode = if (metrics.hasPowerFlow) com.chargeanim.pro.telemetry.ChargeMode.USB else com.chargeanim.pro.telemetry.ChargeMode.USB,
             voltage = metrics.voltageVolts.toFloat().takeIf { it > 0f },
             currentMa = if (metrics.hasPowerFlow) (metrics.currentAmps * 1000.0).toInt().takeIf { it > 0 } else null,
             wattage = if (metrics.hasPowerFlow) metrics.powerWatts.toFloat() else null,
