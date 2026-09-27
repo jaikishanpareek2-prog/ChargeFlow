@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -90,7 +91,7 @@ class ChargingMetricsManager(private val context: Context) {
         val voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) / 1000.0
         val temperature = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10.0
         val currentMicroAmps = readCurrentMicroAmps()
-        val currentAmps = (currentMicroAmps / 1_000_000.0).coerceAtLeast(0.0)
+        val currentAmps = abs(currentMicroAmps) / 1_000_000.0
         val power = (voltage * currentAmps).coerceAtLeast(0.0)
 
         if (charging && !wasCharging) {
