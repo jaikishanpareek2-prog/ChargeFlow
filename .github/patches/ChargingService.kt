@@ -61,6 +61,7 @@ class ChargingService : Service() {
         private const val CHANNEL_ID = "charging_service_channel"
         private const val NOTIFICATION_ID = 1001
         private const val TAG = "ChargeFlowService"
+        private const val CHARGING_ANIMATION_DURATION_MS = 18_000L
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -76,6 +77,9 @@ class ChargingService : Service() {
     private var prefsJob: Job? = null
     private var soundJob: Job? = null
     private var autoHideJob: Job? = null
+    private var chargingAnimationJob: Job? = null
+    private var foregroundStarted = false
+    private var animationShownThisSession = false
     private var animationMode = AnimationMode.TEMPORARY
     private var enabled = true
     private var soundEnabled = false
@@ -98,14 +102,11 @@ class ChargingService : Service() {
                 Intent.ACTION_POWER_DISCONNECTED -> {
                     DiagnosticLog.add(context, "Runtime event: POWER_DISCONNECTED")
                     userPresentSincePlugged = false
-                    if (autoHide) {
-                        removeOverlay("POWER_DISCONNECTED")
-                        DiagnosticLog.add(context, "Runtime watcher stopping after power disconnect")
-                        stopSelf()
-                    } else {
-                        DiagnosticLog.add(context, "Keeping overlay after power disconnect because auto-hide is disabled")
-                        evaluateAnimationState("POWER_DISCONNECTED", false)
-                    }
+                    chargingAnimationJob?.cancel()
+                    chargingAnimationJob = null
+                    animationShownThisSession = false
+                    removeOverlay("POWER_DISCONNECTED")
+                    DiagnosticLog.add(context, "Charging session ended; watcher remains alive for next connection")
                 }
                 Intent.ACTION_BATTERY_CHANGED -> evaluateAnimationState("BATTERY_CHANGED", false)
                 Intent.ACTION_SCREEN_ON -> evaluateAnimationState("SCREEN_ON", false)
@@ -182,6 +183,7 @@ class ChargingService : Service() {
         DiagnosticLog.add(this, "Service onStartCommand: action=${intent?.action}")
         try {
             startForeground(NOTIFICATION_ID, buildNotification())
+            foregroundStarted = true
             DiagnosticLog.add(this, "startForeground() succeeded")
         } catch (e: Exception) {
             Log.e(TAG, "startForeground failed", e)
@@ -190,31 +192,9 @@ class ChargingService : Service() {
             return START_NOT_STICKY
         }
         when (intent?.action) {
-            ACTION_UNPLUGGED -> {
-                evaluateAnimationState("ACTION_UNPLUGGED", false)
-                if (autoHide || overlayView == null) {
-                    DiagnosticLog.add(this, "Stopping watcher after active charging session ended")
-                    stopSelf(startId)
-                    return START_NOT_STICKY
-                }
-                DiagnosticLog.add(this, "Keeping watcher alive after unplug because auto-hide is disabled")
-            }
-            ACTION_PLUGGED_IN, null -> {
-                evaluateAnimationState("SERVICE_START", false)
-                if (!isCurrentlyCharging()) {
-                    DiagnosticLog.add(this, "Service start found no active charging; stopping watcher")
-                    stopSelf(startId)
-                    return START_NOT_STICKY
-                }
-            }
-            ACTION_MONITOR -> {
-                evaluateAnimationState("SERVICE_MONITOR", false)
-                if (!isCurrentlyCharging()) {
-                    DiagnosticLog.add(this, "Monitor request found no active charging; stopping watcher")
-                    stopSelf(startId)
-                    return START_NOT_STICKY
-                }
-            }
+            ACTION_UNPLUGGED -> evaluateAnimationState("ACTION_UNPLUGGED", false)
+            ACTION_PLUGGED_IN, null -> evaluateAnimationState("SERVICE_START", false)
+            ACTION_MONITOR -> evaluateAnimationState("SERVICE_MONITOR", false)
         }
         return START_STICKY
     }
@@ -228,6 +208,10 @@ class ChargingService : Service() {
     }
 
     private fun evaluateAnimationState(reason: String, haptic: Boolean) {
+        if (!foregroundStarted) {
+            DiagnosticLog.add(this, "Evaluate deferred until foreground service is started: $reason")
+            return
+        }
         val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
         val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
@@ -255,15 +239,36 @@ class ChargingService : Service() {
             userPresentSincePlugged = false
         }
 
-        val keepAfterUnplug = !charging && !autoHide && overlayView != null
-        val shouldShow = enabled && (charging || keepAfterUnplug) && when (animationMode) {
-            AnimationMode.ALWAYS_ON -> true
-            AnimationMode.TEMPORARY -> !userPresentSincePlugged || locked
+        if (!charging) {
+            chargingAnimationJob?.cancel()
+            chargingAnimationJob = null
+            removeOverlay(reason)
+            return
         }
 
-        DiagnosticLog.add(this, "Evaluate: reason=$reason charging=$charging locked=$locked enabled=$enabled mode=$animationMode userPresent=$userPresentSincePlugged show=$shouldShow")
+        val shouldShow = enabled && when (animationMode) {
+            AnimationMode.ALWAYS_ON -> true
+            AnimationMode.TEMPORARY -> !animationShownThisSession
+        }
 
-        if (shouldShow) showOverlayIfAllowed(haptic) else removeOverlay(reason)
+        DiagnosticLog.add(this, "Evaluate: reason=$reason charging=$charging locked=$locked enabled=$enabled mode=$animationMode sessionShown=$animationShownThisSession show=$shouldShow")
+
+        if (shouldShow) {
+            animationShownThisSession = true
+            showOverlayIfAllowed(haptic)
+            if (animationMode == AnimationMode.TEMPORARY) {
+                chargingAnimationJob?.cancel()
+                chargingAnimationJob = serviceScope.launch {
+                    kotlinx.coroutines.delay(CHARGING_ANIMATION_DURATION_MS)
+                    if (isCurrentlyCharging()) {
+                        removeOverlay("TEMPORARY_TIMEOUT")
+                        DiagnosticLog.add(this@ChargingService, "Temporary charging animation timed out after 18 seconds")
+                    }
+                }
+            }
+        } else if (animationMode == AnimationMode.ALWAYS_ON) {
+            showOverlayIfAllowed(false)
+        }
     }
 
     private fun showOverlayIfAllowed(haptic: Boolean = false) {
@@ -403,6 +408,8 @@ class ChargingService : Service() {
         soundJob = null
         autoHideJob?.cancel()
         autoHideJob = null
+        chargingAnimationJob?.cancel()
+        chargingAnimationJob = null
         runCatching { unregisterReceiver(powerReceiver) }
         com.chargeanim.pro.telemetry.ChargingMetricsProvider.release()
         telemetry.stop()
