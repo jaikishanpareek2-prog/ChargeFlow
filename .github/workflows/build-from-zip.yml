@@ -37,14 +37,33 @@ jobs:
       - name: Merge ChargeFlow Vibes theme catalog
         working-directory: ChargeAnimPro
         run: python3 ../.github/scripts/patch_vibes_themes.py
-      - name: Apply Cyberpunk typography
+      - name: Install flagship fonts
         working-directory: ChargeAnimPro
         run: |
-          # No TTF is shipped. Do not install font-family XML that references
-          # missing @font resources (that caused AAPT on run #84).
+          set -e
           mkdir -p app/src/main/res/font
-          rm -f app/src/main/res/font/cyberpunk_sans.xml app/src/main/res/font/cyberpunk_font.xml
-          echo "Skipping custom font XML; themes use system default typeface"
+          curl -fL --retry 3 -o app/src/main/res/font/orbitron_regular.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/orbitron/static/Orbitron-Regular.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/orbitron_bold.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/orbitron/static/Orbitron-Bold.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/exo2_regular.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/exo2/static/Exo2-Regular.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/exo2_medium.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/exo2/static/Exo2-Medium.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/rajdhani_regular.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/rajdhani/Rajdhani-Regular.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/rajdhani_medium.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/rajdhani/Rajdhani-Medium.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/share_tech_mono.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/sharetechmono/ShareTechMono-Regular.ttf
+          test -s app/src/main/res/font/orbitron_regular.ttf
+          test -s app/src/main/res/font/share_tech_mono.ttf
+      - name: Apply flagship theme and cyberpunk UI sources
+        working-directory: ChargeAnimPro
+        run: |
+          mkdir -p app/src/main/java/com/chargeflow/theme app/src/main/java/com/chargeanim/pro/ui/theme
+          cp ../.github/patches/FlagshipTheme.kt app/src/main/java/com/chargeflow/theme/FlagshipTheme.kt
+          cp ../.github/patches/FlagshipThemes.kt app/src/main/java/com/chargeflow/theme/FlagshipThemes.kt
+          cp ../.github/patches/FlagshipThemeVisual.kt app/src/main/java/com/chargeanim/pro/ui/theme/FlagshipThemeVisual.kt
+          cp ../.github/patches/CyberpunkFonts.kt app/src/main/java/com/chargeanim/pro/ui/theme/CyberpunkFonts.kt
+          cp ../.github/patches/CyberpunkColors.kt app/src/main/java/com/chargeanim/pro/ui/theme/CyberpunkColors.kt
+          cp ../.github/patches/CyberpunkTypography.kt app/src/main/java/com/chargeanim/pro/ui/theme/CyberpunkTypography.kt
+          cp ../.github/patches/ChargeFlowTheme.kt app/src/main/java/com/chargeanim/pro/ui/theme/ChargeFlowTheme.kt
+          python3 ../.github/scripts/patch_flagship_ui.py
+
       - name: Apply Cyberpunk color palette
         working-directory: ChargeAnimPro
         run: |
