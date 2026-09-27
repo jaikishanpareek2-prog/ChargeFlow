@@ -41,6 +41,11 @@ import com.chargeanim.pro.ui.theme.ThemeVisual
 import com.chargeanim.pro.ui.theme.VibeVisual
 import com.chargeanim.pro.ui.theme.ThemeType
 import com.chargeanim.pro.ui.theme.VibesThemeManager
+import com.chargeanim.pro.ui.theme.CyberpunkColors
+import com.chargeanim.pro.ui.theme.CyberpunkTypography
+import com.chargeanim.pro.ui.theme.FlagshipThemeVisual
+import com.chargeflow.theme.FlagshipThemes
+import com.chargeflow.theme.ThemeId as FlagshipThemeId
 
 @Composable
 fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: MediaSelection, showTelemetry: Boolean = true) {
@@ -73,17 +78,18 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
         Box(Modifier.align(Alignment.Center).size(260.dp), contentAlignment = Alignment.Center) {
             if (media.uri != null) {
                 MediaRenderer(media, Modifier.fillMaxSize()) {}
-            } else if (vibe != ThemeType.NONE) {
-                VibeVisual(vibe, Modifier.fillMaxSize())
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${status.percent}%", fontSize = 44.sp, color = Color(0xFFEAF4FF))
-                    Text(speedLabel(status), fontSize = 14.sp, color = accent)
-                }
             } else {
-                ThemeVisual(theme, Modifier.fillMaxSize()) {
+                val flagshipId = when {
+                    vibe == ThemeType.MIDNIGHT_GARDEN -> FlagshipThemeId.MIDNIGHT_GARDEN
+                    vibe == ThemeType.CELESTIAL_SPARKLE -> FlagshipThemeId.CELESTIAL_SPARKLE
+                    vibe == ThemeType.ENCHANTED_FOREST -> FlagshipThemeId.ENCHANTED_FOREST
+                    vibe == ThemeType.OCEAN_ABYSS -> FlagshipThemeId.OCEAN_ABYSS
+                    else -> runCatching { FlagshipThemeId.valueOf(theme.name) }.getOrDefault(FlagshipThemeId.FUTURISTIC)
+                }
+                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = status.isCharging) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${status.percent}%", fontSize = 44.sp, color = Color(0xFFEAF4FF))
-                        Text(speedLabel(status), fontSize = 14.sp, color = accent)
+                        Text("${status.percent}%", style = CyberpunkTypography.displayMedium, color = CyberpunkColors.OnSurface)
+                        Text(speedLabel(status), style = CyberpunkTypography.labelLarge, color = FlagshipThemes.get(flagshipId).accent)
                     }
                 }
             }
@@ -117,8 +123,8 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
 }
 @Composable private fun MetricCell(label: String, value: String?) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value ?: "—", fontSize = 15.sp, color = Color(0xFFEAF4FF))
-        Text(label, fontSize = 10.sp, color = Color(0xFF6B7788))
+        Text(value ?: "—", style = MetricNumberStyle, color = CyberpunkColors.OnSurface)
+        Text(label, style = MetricLabelStyle)
     }
 }
 @Composable private fun StatusBanner(status: BatteryStatusData) {
