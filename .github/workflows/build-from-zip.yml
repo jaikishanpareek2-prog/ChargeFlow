@@ -42,13 +42,13 @@ jobs:
         run: |
           set -e
           mkdir -p app/src/main/res/font
-          curl -fL --retry 3 -o app/src/main/res/font/orbitron_regular.ttf https://github.com/google/fonts/raw/master/ofl/orbitron/Orbitron-Regular.ttf
-          curl -fL --retry 3 -o app/src/main/res/font/orbitron_bold.ttf https://github.com/google/fonts/raw/master/ofl/orbitron/Orbitron-Bold.ttf
-          curl -fL --retry 3 -o app/src/main/res/font/exo2_regular.ttf https://github.com/google/fonts/raw/master/ofl/exo2/Exo2-Regular.ttf
-          curl -fL --retry 3 -o app/src/main/res/font/exo2_medium.ttf https://github.com/google/fonts/raw/master/ofl/exo2/Exo2-Medium.ttf
-          curl -fL --retry 3 -o app/src/main/res/font/rajdhani_regular.ttf https://github.com/google/fonts/raw/master/ofl/rajdhani/Rajdhani-Regular.ttf
-          curl -fL --retry 3 -o app/src/main/res/font/rajdhani_medium.ttf https://github.com/google/fonts/raw/master/ofl/rajdhani/Rajdhani-Medium.ttf
-          curl -fL --retry 3 -o app/src/main/res/font/share_tech_mono.ttf https://github.com/google/fonts/raw/master/ofl/sharetechmono/ShareTechMono-Regular.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/orbitron_regular.ttf https://cdn.jsdelivr.net/fontsource/fonts/orbitron:vf@35/latin-wght-normal.ttf
+          cp app/src/main/res/font/orbitron_regular.ttf app/src/main/res/font/orbitron_bold.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/exo2_regular.ttf https://cdn.jsdelivr.net/fontsource/fonts/exo-2:vf@26/latin-wght-normal.ttf
+          cp app/src/main/res/font/exo2_regular.ttf app/src/main/res/font/exo2_medium.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/rajdhani_regular.ttf https://cdn.jsdelivr.net/fontsource/fonts/rajdhani@17/latin-400-normal.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/rajdhani_medium.ttf https://cdn.jsdelivr.net/fontsource/fonts/rajdhani@17/latin-500-normal.ttf
+          curl -fL --retry 3 -o app/src/main/res/font/share_tech_mono.ttf https://cdn.jsdelivr.net/fontsource/fonts/share-tech-mono@16/latin-400-normal.ttf
           for font in orbitron_regular.ttf orbitron_bold.ttf exo2_regular.ttf exo2_medium.ttf rajdhani_regular.ttf rajdhani_medium.ttf share_tech_mono.ttf; do
             test -s "app/src/main/res/font/$font"
           done
