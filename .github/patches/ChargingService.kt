@@ -107,7 +107,13 @@ class ChargingService : Service() {
                 }
                 Intent.ACTION_BATTERY_CHANGED -> evaluateAnimationState("BATTERY_CHANGED", false)
                 Intent.ACTION_SCREEN_ON -> evaluateAnimationState("SCREEN_ON", false)
-                Intent.ACTION_SCREEN_OFF -> evaluateAnimationState("SCREEN_OFF", false)
+                Intent.ACTION_SCREEN_OFF -> {
+                    evaluateAnimationState("SCREEN_OFF", false)
+                    serviceScope.launch {
+                        kotlinx.coroutines.delay(350L)
+                        evaluateAnimationState("SCREEN_OFF_RECHECK", false)
+                    }
+                }
                 Intent.ACTION_USER_PRESENT -> {
                     userPresentSincePlugged = true
                     evaluateAnimationState("USER_PRESENT", false)
