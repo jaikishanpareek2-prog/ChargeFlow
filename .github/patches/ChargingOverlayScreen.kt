@@ -42,8 +42,6 @@ import com.chargeanim.pro.ui.theme.ThemeVisual
 import com.chargeanim.pro.ui.theme.VibeVisual
 import com.chargeanim.pro.ui.theme.ThemeType
 import com.chargeanim.pro.ui.theme.VibesThemeManager
-import com.chargeanim.pro.ui.theme.CyberpunkColors
-import com.chargeanim.pro.ui.theme.CyberpunkTypography
 import com.chargeanim.pro.ui.theme.FlagshipThemeVisual
 import com.chargeflow.theme.FlagshipThemes
 import com.chargeflow.theme.ThemeId as FlagshipThemeId
@@ -87,12 +85,7 @@ fun ChargingOverlayScreen(status: BatteryStatusData, theme: ThemeId, media: Medi
                     vibe == ThemeType.OCEAN_ABYSS -> FlagshipThemeId.OCEAN_ABYSS
                     else -> runCatching { FlagshipThemeId.valueOf(theme.name) }.getOrDefault(FlagshipThemeId.FUTURISTIC)
                 }
-                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = status.isCharging) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${status.percent}%", style = CyberpunkTypography.displayMedium, color = CyberpunkColors.OnSurface)
-                        Text(speedLabel(status), style = CyberpunkTypography.labelLarge, color = FlagshipThemes.get(flagshipId).accent)
-                    }
-                }
+                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = status.isCharging)
             }
         }
         Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp).fillMaxWidth(0.86f), horizontalAlignment = Alignment.CenterHorizontally) {
