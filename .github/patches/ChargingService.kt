@@ -438,6 +438,5 @@ private class OverlayLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, Saved
     override val viewModelStore = ViewModelStore()
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry get() = savedStateController.savedStateRegistry
-    init { savedStateController.performAttach() }
     fun handleLifecycleEvent(event: Lifecycle.Event) = lifecycleRegistry.handleLifecycleEvent(event)
 }
