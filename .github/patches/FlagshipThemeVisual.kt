@@ -21,20 +21,23 @@ fun FlagshipThemeVisual(
     themeId: ThemeId,
     modifier: Modifier = Modifier,
     active: Boolean = true,
+    animated: Boolean = true,
     content: @Composable () -> Unit = {}
 ) {
     val theme = FlagshipThemes.get(themeId)
-    val transition = rememberInfiniteTransition(label = "flagship-\${theme.id.name}")
-    val phase by transition.animateFloat(
+    val transition = rememberInfiniteTransition(label = "flagship-" + theme.id.name)
+    val animatedPhase by transition.animateFloat(
         0f, 1f,
         infiniteRepeatable(tween((9000f / theme.pulseSpeed.coerceAtLeast(0.1f)).toInt(), easing = LinearEasing)),
         label = "phase"
     )
-    val pulse by transition.animateFloat(
+    val animatedPulse by transition.animateFloat(
         0.78f, 1f,
         infiniteRepeatable(tween((1400f / theme.pulseSpeed.coerceAtLeast(0.1f)).toInt(), easing = LinearEasing), RepeatMode.Reverse),
         label = "pulse"
     )
+    val phase = if (animated) animatedPhase else 0.5f
+    val pulse = if (animated) animatedPulse else 0.9f
     val particles = remember(theme.id) {
         val r = Random(theme.id.ordinal * 7919 + 17)
         List(theme.particleCount.coerceAtMost(180)) {
