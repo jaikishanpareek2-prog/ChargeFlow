@@ -1,4 +1,6 @@
 name: Build ChargeFlow APK
+permissions:
+  contents: write
 # Material3 dashboard CI: rebuild after every UI patch.
 
 on:
@@ -304,6 +306,27 @@ jobs:
           touch gradle.properties
           if grep -q '^android.useAndroidX=' gradle.properties; then sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties; else echo 'android.useAndroidX=true' >> gradle.properties; fi
           if grep -q '^android.enableJetifier=' gradle.properties; then sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' gradle.properties; else echo 'android.enableJetifier=true' >> gradle.properties; fi
+      - name: Create merged ChargeFlow source ZIP
+        run: |
+          rm -f ChargeFlow.zip
+          cd ChargeAnimPro
+          zip -qr ../ChargeFlow.zip . -x "**/.gradle/**" "**/build/**" "**/.idea/**" "**/local.properties"
+          cd ..
+          test -s ChargeFlow.zip
+          unzip -tq ChargeFlow.zip
+          echo "Merged ChargeFlow.zip created: $(du -h ChargeFlow.zip | cut -f1)"
+      - name: Commit merged ChargeFlow ZIP
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[merged-zip]')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ChargeFlow.zip
+          if git diff --cached --quiet; then
+            echo "ChargeFlow.zip is already current."
+          else
+            git commit -m "chore: update merged ChargeFlow source ZIP [merged-zip]"
+            git push
+          fi
       - name: Generate wrapper
         working-directory: ChargeAnimPro
         run: gradle wrapper --gradle-version 8.7
