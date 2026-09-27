@@ -49,8 +49,9 @@ jobs:
           curl -fL --retry 3 -o app/src/main/res/font/rajdhani_regular.ttf https://github.com/google/fonts/raw/master/ofl/rajdhani/Rajdhani-Regular.ttf
           curl -fL --retry 3 -o app/src/main/res/font/rajdhani_medium.ttf https://github.com/google/fonts/raw/master/ofl/rajdhani/Rajdhani-Medium.ttf
           curl -fL --retry 3 -o app/src/main/res/font/share_tech_mono.ttf https://github.com/google/fonts/raw/master/ofl/sharetechmono/ShareTechMono-Regular.ttf
-          test -s app/src/main/res/font/orbitron_regular.ttf
-          test -s app/src/main/res/font/share_tech_mono.ttf
+          for font in orbitron_regular.ttf orbitron_bold.ttf exo2_regular.ttf exo2_medium.ttf rajdhani_regular.ttf rajdhani_medium.ttf share_tech_mono.ttf; do
+            test -s "app/src/main/res/font/$font"
+          done
       - name: Apply flagship theme and cyberpunk UI sources
         working-directory: ChargeAnimPro
         run: |
