@@ -153,7 +153,7 @@ private fun ThemeCard(themeId: ThemeId, isSelected: Boolean, onClick: () -> Unit
                 contentAlignment = Alignment.Center
             ) {
                 val flagshipId = runCatching { FlagshipThemeId.valueOf(themeId.name) }.getOrDefault(FlagshipThemeId.FUTURISTIC)
-                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = false)
+                FlagshipThemeVisual(flagshipId, Modifier.fillMaxSize(), active = false, animated = false)
             }
             Spacer(Modifier.height(10.dp))
             Text(
@@ -162,7 +162,7 @@ private fun ThemeCard(themeId: ThemeId, isSelected: Boolean, onClick: () -> Unit
                 maxLines = 1
             )
             Text(
-                if (isSelected) "ACTIVE EXPERIENCE" else "Tap to preview",
+                if (isSelected) "ACTIVE EXPERIENCE" else "Select to experience",
                 style = MaterialTheme.typography.labelSmall,
                 color = if (isSelected) style.accentPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 3.dp)
